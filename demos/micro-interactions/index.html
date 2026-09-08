@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Micro-Interactions — Frontend Experimentations</title>
+    <link rel="stylesheet" href="../../src/styles/base.css" />
+    <style>
+      /* ═══════════════════════════════════════════════════════════════════
+         ASYMMETRIC TIMING is the whole idea.
+
+         Physical objects respond instantly to force and settle slowly. So:
+           enter / press   → fast   (~120-160ms)
+           settle / release→ slower (~280-400ms, often a spring)
+
+         Symmetric transitions (0.3s both ways) are the single most common
+         reason UI motion feels sluggish and cheap.
+         ═══════════════════════════════════════════════════════════════════ */
+
+      :root {
+        --in: 140ms;
+        --out: 340ms;
+        --spring: linear(
+          0, 0.32 6%, 0.66 12%, 0.9 17%, 1.03 22%, 1.08 27%, 1.06 34%,
+          1.01 44%, 0.99 55%, 1
+        );
+      }
+
+      main { max-width: 1080px; margin: 0 auto; padding: 0 var(--pad) 8rem; }
+      section { margin: 4rem 0; }
+      h2 { font-size: 1.25rem; display: flex; gap: 0.7rem; align-items: baseline; }
+      h2 span { font-family: var(--font-mono); font-size: 0.72rem; color: var(--accent-2); }
+      .lead { color: var(--fg-dim); max-width: 66ch; }
+      .callout { border-left: 2px solid var(--accent); padding-left: 1rem; color: var(--fg-dim); font-size: 0.88rem; margin: 1rem 0; }
+      .row { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; margin: 1.4rem 0; }
+      .stage {
+        border: 1px solid var(--line); border-radius: var(--radius);
+        background: var(--bg-1); padding: 2rem; margin: 1.4rem 0;
+        display: flex; gap: 1.4rem; flex-wrap: wrap; align-items: center; justify-content: center;
+      }
+
+      /* ── 1 · BUTTONS ─────────────────────────────────────────────────────
+         All seven states. Note the transition list: transform and background
+         go fast on the way in and slow on the way out via separate rules. */
+      .btn {
+        font: inherit; font-size: 0.88rem; font-weight: 600;
+        padding: 0.65rem 1.3rem; border-radius: 10px; cursor: pointer;
+        border: 1px solid transparent; position: relative; overflow: hidden;
+        transition: background var(--out), color var(--out), border-color var(--out),
+                    scale var(--out) var(--ease-out), box-shadow var(--out);
+        isolation: isolate;
+      }
+      .btn:active { transition-duration: var(--in); scale: 0.97; }
+      .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+      .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+      .btn--primary { background: var(--accent); color: oklch(16% 0.03 265); }
+      .btn--primary:hover:not(:disabled) { background: oklch(78% 0.17 265); box-shadow: 0 4px 18px oklch(72% 0.19 265 / 0.35); }
+      .btn--secondary { background: var(--bg-2); color: var(--fg); border-color: var(--line); }
+      .btn--secondary:hover:not(:disabled) { border-color: var(--fg-faint); background: oklch(26% 0.016 275); }
+      .btn--ghost { background: transparent; color: var(--fg-dim); }
+      .btn--ghost:hover:not(:disabled) { background: var(--bg-2); color: var(--fg); }
+      .btn--danger { background: oklch(58% 0.2 25); color: oklch(98% 0.01 25); }
+      .btn--danger:hover:not(:disabled) { background: oklch(64% 0.21 25); box-shadow: 0 4px 18px oklch(58% 0.2 25 / 0.4); }
+
+      /* ── 2 · RIPPLE ──────────────────────────────────────────────────────
+         Spawned at the exact click point and removed on animationend, so
+         nodes never accumulate across hundreds of clicks. */
+      .ripple {
+        position: absolute; border-radius: 50%; pointer-events: none;
+        background: currentColor; opacity: 0.35; z-index: -1;
+        animation: ripple 620ms var(--ease-out) forwards;
+      }
+      @keyframes ripple { to { scale: 2.6; opacity: 0; } }
+
+      /* ── 3 · MAGNETIC ────────────────────────────────────────────────────
+         Gated on a fine pointer. On touch there is no hover state to preview
+         the pull, and the element would just feel broken. */
+      .magnet { position: relative; }
+      .magnet__inner { display: block; transition: translate var(--out) var(--ease-out); }
+      @media (hover: none) { .magnet { --magnet-disabled: 1; } }
+
+      /* ── 4 · TOGGLE ──────────────────────────────────────────────────────
+         The knob squashes along its direction of travel while moving, which
+         is the cheapest possible nod to secondary motion. */
+      .switch {
+        --w: 56px; --h: 32px; --pad: 4px;
+        appearance: none; width: var(--w); height: var(--h); border-radius: 100px;
+        background: var(--bg-2); border: 1px solid var(--line);
+        position: relative; cursor: pointer; flex-shrink: 0;
+        transition: background var(--out), border-color var(--out);
+      }
+      .switch::after {
+        content: ''; position: absolute; top: var(--pad); left: var(--pad);
+        width: calc(var(--h) - var(--pad) * 2 - 2px); aspect-ratio: 1;
+        border-radius: 100px; background: var(--fg-faint);
+        transition: translate var(--out) var(--spring), background var(--out), scale var(--in);
+      }
+      .switch:checked { background: var(--accent); border-color: var(--accent); }
+      .switch:checked::after { translate: calc(var(--w) - var(--h)) 0; background: oklch(18% 0.02 265); }
+      .switch:active::after { scale: 1.18 0.9; }
+      .switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+      /* ── 5 · CHECKBOX ────────────────────────────────────────────────────
+         The tick draws itself via stroke-dashoffset. */
+      .check { display: inline-flex; align-items: center; gap: 0.7rem; cursor: pointer; font-size: 0.9rem; }
+      .check input { position: absolute; opacity: 0; width: 0; height: 0; }
+      .check__box {
+        width: 22px; height: 22px; border-radius: 7px; flex-shrink: 0;
+        border: 1.5px solid var(--line); background: var(--bg-2);
+        display: grid; place-items: center;
+        transition: background var(--in), border-color var(--in), scale var(--in);
+      }
+      .check input:checked + .check__box { background: var(--accent-2); border-color: var(--accent-2); }
+      .check input:active + .check__box { scale: 0.88; }
+      .check input:focus-visible + .check__box { outline: 2px solid var(--accent); outline-offset: 2px; }
+      .check__box path {
+        stroke: oklch(16% 0.02 190); stroke-width: 2.6; fill: none;
+        stroke-linecap: round; stroke-linejoin: round;
+        stroke-dasharray: 20; stroke-dashoffset: 20;
+        transition: stroke-dashoffset 260ms var(--ease-out) 40ms;
+      }
+      .check input:checked + .check__box path { stroke-dashoffset: 0; }
+
+      /* ── 6 · INPUT ───────────────────────────────────────────────────────
+         Floating label driven entirely by :placeholder-shown — no JS state. */
+      .field { position: relative; display: grid; gap: 0.3rem; min-width: 260px; }
+      .field input {
+        font: inherit; font-size: 0.9rem; padding: 1.25rem 0.9rem 0.5rem;
+        background: var(--bg-2); border: 1px solid var(--line);
+        border-radius: 10px; color: var(--fg);
+        transition: border-color var(--in), background var(--in), box-shadow var(--in);
+      }
+      .field input:focus {
+        outline: none; border-color: var(--accent);
+        box-shadow: 0 0 0 3px color-mix(in oklch, var(--accent) 22%, transparent);
+      }
+      .field label {
+        position: absolute; left: 0.95rem; top: 0.85rem;
+        font-size: 0.9rem; color: var(--fg-faint); pointer-events: none;
+        transition: translate var(--out) var(--ease-out), font-size var(--out), color var(--in);
+      }
+      .field input:not(:placeholder-shown) + label,
+      .field input:focus + label { translate: 0 -0.62rem; font-size: 0.68rem; color: var(--accent); }
+      .field__meta { display: flex; font-size: 0.72rem; color: var(--fg-faint); min-height: 1.1em; }
+      .field__count { margin-left: auto; font-family: var(--font-mono); opacity: 0; transition: opacity var(--out); }
+      .field__count.near { opacity: 1; }
+      .field__count.over { opacity: 1; color: oklch(70% 0.19 25); }
+      .field input:user-invalid { border-color: oklch(60% 0.2 25); }
+      .field input:user-valid { border-color: oklch(60% 0.16 155); }
+
+      /* ── 7 · SUBMIT MORPH ────────────────────────────────────────────────── */
+      .submit {
+        min-width: 150px; display: inline-grid; place-items: center;
+        transition: min-width var(--out) var(--ease-out), background var(--out);
+      }
+      .submit > span { grid-area: 1 / 1; transition: opacity var(--in), scale var(--in); }
+      .submit[data-state='idle'] .s-load,
+      .submit[data-state='idle'] .s-done,
+      .submit[data-state='loading'] .s-idle,
+      .submit[data-state='loading'] .s-done,
+      .submit[data-state='done'] .s-idle,
+      .submit[data-state='done'] .s-load { opacity: 0; scale: 0.85; }
+      .submit[data-state='loading'] { min-width: 54px; }
+      .submit[data-state='done'] { min-width: 54px; background: oklch(62% 0.16 155); }
+      .spinner {
+        width: 16px; height: 16px; border-radius: 50%;
+        border: 2px solid oklch(16% 0.03 265 / 0.3); border-top-color: oklch(16% 0.03 265);
+        animation: spin 700ms linear infinite;
+      }
+      @keyframes spin { to { rotate: 360deg; } }
+
+      /* ── 8 · SEGMENTED ───────────────────────────────────────────────────
+         ONE shared indicator that slides. Animating each option's own
+         background instead would cross-fade rather than move, and the eye
+         reads that as two separate things rather than one moving thing. */
+      .seg {
+        position: relative; display: inline-flex; padding: 4px; gap: 2px;
+        background: var(--bg-2); border: 1px solid var(--line); border-radius: 100px;
+      }
+      .seg__pill {
+        position: absolute; top: 4px; bottom: 4px; border-radius: 100px;
+        background: var(--fg); z-index: 0;
+        transition: translate var(--out) var(--ease-out), width var(--out) var(--ease-out);
+      }
+      .seg button {
+        position: relative; z-index: 1; font: inherit; font-size: 0.82rem; font-weight: 600;
+        background: none; border: 0; cursor: pointer; padding: 0.4rem 1rem;
+        border-radius: 100px; color: var(--fg-dim); transition: color var(--in);
+      }
+      .seg button[aria-selected='true'] { color: var(--bg-0); }
+      .seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+      @media (prefers-reduced-motion: reduce) {
+        .magnet__inner { translate: none !important; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="note">
+      <h1>Micro-Interactions</h1>
+      <p>
+        Every control here has all seven states — rest, hover, focus-visible,
+        active, loading, success, disabled — and the transitions between them
+        carry meaning. The recurring idea is <strong>asymmetric timing</strong>:
+        respond in ~140ms, settle in ~340ms, because that is how physical
+        things behave.
+      </p>
+    </div>
+
+    <main>
+      <section>
+        <h2>1 · Buttons <span>states &amp; hierarchy</span></h2>
+        <p class="lead">
+          Four levels of emphasis. The press scales to 0.97 with a fast
+          transition; the release eases back slowly. Tab through them to see
+          the focus rings, which use <code>outline-offset</code> so they never
+          affect layout.
+        </p>
+        <div class="stage">
+          <button class="btn btn--primary" data-ripple type="button">Primary</button>
+          <button class="btn btn--secondary" data-ripple type="button">Secondary</button>
+          <button class="btn btn--ghost" data-ripple type="button">Ghost</button>
+          <button class="btn btn--danger" data-ripple type="button">Destructive</button>
+          <button class="btn btn--primary" type="button" disabled>Disabled</button>
+        </div>
+        <p class="callout">
+          Every one of these also carries a ripple originating from the exact
+          click coordinates. The node is removed on <code>animationend</code> —
+          without that, a page accumulates thousands of dead elements.
+        </p>
+      </section>
+
+      <section>
+        <h2>2 · Magnetic <span>proximity, not hover</span></h2>
+        <p class="lead">
+          Within ~90px the label eases toward the cursor at a fraction of the
+          distance, and springs back on exit. Inert on touch devices, where
+          there is no pointer to preview it.
+        </p>
+        <div class="stage">
+          <button class="btn btn--primary magnet" data-magnet type="button"><span class="magnet__inner">Get in touch</span></button>
+          <button class="btn btn--secondary magnet" data-magnet type="button"><span class="magnet__inner">Pull me</span></button>
+        </div>
+      </section>
+
+      <section>
+        <h2>3 · Toggle &amp; checkbox <span>squash, and a drawn tick</span></h2>
+        <p class="lead">
+          The knob squashes along its travel; the tick draws itself with
+          <code>stroke-dashoffset</code>. Both are native inputs restyled with
+          <code>appearance: none</code>, so keyboard and screen-reader
+          behaviour is untouched.
+        </p>
+        <div class="stage">
+          <label style="display:flex;align-items:center;gap:.8rem;font-size:.9rem">
+            <input class="switch" type="checkbox" checked /> Notifications
+          </label>
+          <label class="check">
+            <input type="checkbox" checked />
+            <span class="check__box">
+              <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M2 7.5 5.5 11 12 3.5" /></svg>
+            </span>
+            Remember me
+          </label>
+        </div>
+      </section>
+
+      <section>
+        <h2>4 · Text field <span>floating label, live validation</span></h2>
+        <p class="lead">
+          The label float is pure CSS via <code>:placeholder-shown</code>.
+          Validation uses <code>:user-invalid</code>, which only fires after the
+          user has actually interacted — unlike <code>:invalid</code>, which
+          shouts at an empty required field the moment the page loads.
+        </p>
+        <div class="stage">
+          <div class="field">
+            <input type="email" id="email" placeholder=" " required maxlength="40" />
+            <label for="email">Email address</label>
+            <span class="field__meta">
+              <span id="email-hint">We only use this to reply.</span>
+              <span class="field__count" id="email-count"></span>
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>5 · Submit morph <span>idle → loading → done</span></h2>
+        <p class="lead">
+          The width animates while the labels cross-fade in the same grid cell,
+          so nothing jumps. Note the minimum loading time — a response that
+          returns in 40ms would otherwise flash and look like a glitch.
+        </p>
+        <div class="stage">
+          <button class="btn btn--primary submit" id="submit" data-state="idle" type="button">
+            <span class="s-idle">Save changes</span>
+            <span class="s-load"><span class="spinner"></span></span>
+            <span class="s-done">✓</span>
+          </button>
+        </div>
+      </section>
+
+      <section>
+        <h2>6 · Segmented control <span>one moving indicator</span></h2>
+        <p class="lead">
+          The pill is a single element whose position and width are written on
+          selection. Animating each option's own background would cross-fade
+          two things rather than move one, and the difference is obvious.
+        </p>
+        <div class="stage">
+          <div class="seg" id="seg" role="tablist" aria-label="View">
+            <span class="seg__pill" aria-hidden="true"></span>
+            <button role="tab" aria-selected="true" type="button">Day</button>
+            <button role="tab" aria-selected="false" type="button">Week</button>
+            <button role="tab" aria-selected="false" type="button">Month</button>
+            <button role="tab" aria-selected="false" type="button">Quarter</button>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>The numbers</h2>
+        <ul class="lead">
+          <li><strong>0–100ms</strong> — perceived as instant. Hover feedback lives here.</li>
+          <li><strong>100–300ms</strong> — the working range for most UI state changes.</li>
+          <li><strong>300–500ms</strong> — large surfaces: modals, drawers, page-level moves.</li>
+          <li><strong>Over 500ms</strong> — only for something the user explicitly waits on. It will feel slow.</li>
+          <li>
+            <strong>Scale duration with distance.</strong> A tooltip 8px away
+            and a drawer 400px away should not share a duration.
+          </li>
+        </ul>
+      </section>
+    </main>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

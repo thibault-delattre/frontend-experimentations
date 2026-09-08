@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Noise &amp; Texture — Frontend Experimentations</title>
+    <link rel="stylesheet" href="../../src/styles/base.css" />
+    <style>
+      main { max-width: 1080px; margin: 0 auto; padding: 0 var(--pad) 8rem; }
+      section { margin: 4rem 0; }
+      h2 { font-size: 1.25rem; display: flex; gap: 0.7rem; align-items: baseline; }
+      h2 span { font-family: var(--font-mono); font-size: 0.72rem; color: var(--accent-2); }
+      .lead { color: var(--fg-dim); max-width: 66ch; }
+      .callout { border-left: 2px solid var(--accent); padding-left: 1rem; color: var(--fg-dim); font-size: 0.88rem; margin: 1.2rem 0; }
+      pre { overflow-x: auto; background: var(--bg-1); border: 1px solid var(--line); border-radius: var(--radius); padding: 0.9rem 1.1rem; font-size: 0.76rem; }
+      .pair { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); margin: 1.4rem 0; }
+      .cell { position: relative; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line); aspect-ratio: 16 / 10; }
+      .cell__tag {
+        position: absolute; left: 0.7rem; bottom: 0.6rem; z-index: 5;
+        font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.04em;
+        color: oklch(100% 0 0 / 0.8); background: oklch(0% 0 0 / 0.45);
+        padding: 0.18rem 0.55rem; border-radius: 100px; backdrop-filter: blur(4px);
+      }
+
+      /* A gradient chosen to band badly on 8-bit displays — the whole point of
+         §1 is that grain hides this. */
+      .banding {
+        position: absolute; inset: 0;
+        background: linear-gradient(150deg, oklch(30% 0.13 275), oklch(12% 0.04 275) 70%);
+      }
+
+      /* ── 1 · FILM GRAIN ───────────────────────────────────────────────────
+         feTurbulence generates noise with no image, no request and no bytes.
+         Overlaid at low opacity it dithers the gradient, breaking the flat
+         steps into a stipple the eye averages back out. */
+      .grain::after {
+        content: ''; position: absolute; inset: -50%;
+        background-image: var(--grain-url);
+        opacity: 0.42; pointer-events: none;
+        mix-blend-mode: overlay;
+      }
+      .grain--animated::after { animation: grain-shift 0.6s steps(4) infinite; }
+      @keyframes grain-shift {
+        0%   { translate: 0 0; }
+        25%  { translate: -3% 2%; }
+        50%  { translate: 2% -3%; }
+        75%  { translate: -2% -2%; }
+        100% { translate: 0 0; }
+      }
+
+      /* ── 2 · MESH GRADIENT ────────────────────────────────────────────────
+         Several oversized radial gradients, heavily blurred, drifting on a
+         TRANSFORM. Animating the gradient stops themselves would repaint the
+         whole layer every frame; animating a transform does not. */
+      .mesh { background: oklch(12% 0.03 275); }
+      .mesh__layer {
+        position: absolute; inset: -40%;
+        filter: blur(48px) saturate(150%);
+        background:
+          radial-gradient(38% 38% at 25% 30%, oklch(62% 0.22 275 / 0.9), transparent 62%),
+          radial-gradient(34% 34% at 75% 35%, oklch(64% 0.2 190 / 0.85), transparent 62%),
+          radial-gradient(40% 40% at 50% 82%, oklch(58% 0.24 330 / 0.85), transparent 64%),
+          radial-gradient(30% 30% at 88% 78%, oklch(70% 0.19 60 / 0.7), transparent 62%);
+        animation: mesh-drift 22s var(--ease-io) infinite alternate;
+        will-change: transform;
+      }
+      @keyframes mesh-drift {
+        to { transform: translate3d(6%, -5%, 0) scale(1.2) rotate(12deg); }
+      }
+
+      /* ── 3 · ORDERED DITHER ───────────────────────────────────────────────
+         A 4×4 Bayer threshold matrix as a tiny repeating background. Where the
+         underlying gradient crosses each cell's threshold the pixel flips,
+         producing the deliberate cross-hatched banding of early displays. */
+      .dither { background: linear-gradient(120deg, oklch(88% 0.16 85), oklch(20% 0.08 275)); }
+      .dither::after {
+        content: ''; position: absolute; inset: 0;
+        background-image: var(--bayer-url);
+        background-size: 4px 4px;
+        mix-blend-mode: hard-light; opacity: 0.85;
+      }
+
+      /* ── 4 · HALFTONE ─────────────────────────────────────────────────────
+         A repeating radial-gradient of dots, rotated off-axis (real halftone
+         screens are set at 15°/45° so the rosette does not align with the
+         pixel grid), multiplied over an image. */
+      .halftone { background: linear-gradient(115deg, oklch(72% 0.2 30), oklch(24% 0.1 300)); }
+      .halftone::after {
+        content: ''; position: absolute; inset: -30%;
+        background-image: radial-gradient(circle at center, oklch(0% 0 0) 0 32%, transparent 34%);
+        background-size: 7px 7px;
+        rotate: 15deg;
+        mix-blend-mode: color-burn; opacity: 0.75;
+      }
+
+      /* ── 5 · PAPER ────────────────────────────────────────────────────────
+         High baseFrequency turbulence desaturated to grey, at very low
+         opacity, over a warm off-white. */
+      .paper { background: oklch(93% 0.014 85); }
+      .paper::after {
+        content: ''; position: absolute; inset: 0;
+        background-image: var(--fibre-url);
+        opacity: 0.55; mix-blend-mode: multiply;
+      }
+      .paper__text {
+        position: relative; z-index: 2; padding: 1.6rem;
+        color: oklch(30% 0.03 60); font-size: 0.9rem; line-height: 1.6;
+      }
+
+      /* ── 6 · SCANLINES + CRT ──────────────────────────────────────────── */
+      .crt { background: oklch(18% 0.06 150); }
+      .crt__content {
+        position: absolute; inset: 0; display: grid; place-items: center;
+        font-family: var(--font-mono); font-size: 1.5rem; color: oklch(85% 0.2 150);
+        text-shadow: 0 0 10px oklch(80% 0.24 150 / 0.8);
+      }
+      .crt::after {
+        content: ''; position: absolute; inset: 0; pointer-events: none;
+        background: repeating-linear-gradient(
+          to bottom, oklch(0% 0 0 / 0.35) 0 1px, transparent 1px 3px
+        );
+      }
+      .crt::before {
+        content: ''; position: absolute; inset: 0; z-index: 3; pointer-events: none;
+        background: radial-gradient(120% 120% at 50% 50%, transparent 55%, oklch(0% 0 0 / 0.75));
+      }
+
+      /* ── 7 · BLEND MODE COMPARISON ─────────────────────────────────────── */
+      .blends { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.8rem; }
+      .blend { position: relative; aspect-ratio: 1; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); }
+      .blend::before {
+        content: ''; position: absolute; inset: 0;
+        background: linear-gradient(140deg, oklch(45% 0.2 275), oklch(70% 0.19 30));
+      }
+      .blend::after {
+        content: ''; position: absolute; inset: 0;
+        background-image: var(--grain-url); opacity: 0.6;
+        mix-blend-mode: var(--mode);
+      }
+      .blend span {
+        position: absolute; inset: auto 0 0 0; z-index: 3; text-align: center;
+        font-family: var(--font-mono); font-size: 0.66rem; padding: 0.3rem;
+        background: oklch(0% 0 0 / 0.45); color: oklch(95% 0 0);
+      }
+
+      .controls {
+        display: flex; gap: 1.4rem; flex-wrap: wrap; align-items: center;
+        padding: 0.85rem 1.1rem; border: 1px solid var(--line);
+        border-radius: var(--radius); background: var(--bg-1);
+        font-size: 0.8rem; color: var(--fg-dim); margin: 1.2rem 0;
+      }
+      .controls label { display: flex; align-items: center; gap: 0.6rem; }
+      .controls input[type='range'] { accent-color: var(--accent); width: 140px; }
+      .controls output { font-family: var(--font-mono); color: var(--accent-2); min-width: 3rem; }
+    </style>
+  </head>
+  <body>
+    <!-- The filters live here and are rasterised once into data URIs by main.js.
+         Keeping them in the document (rather than inline in CSS) means they can
+         be inspected, and re-serialised with different parameters. -->
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+      <filter id="grain-filter">
+        <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch" />
+        <feColorMatrix type="saturate" values="0" />
+      </filter>
+    </svg>
+
+    <div class="note">
+      <h1>Noise &amp; Texture</h1>
+      <p>
+        Flat digital surfaces read as flat because they are mathematically
+        perfect. A little noise is the cheapest possible fix — and its real job
+        is not nostalgia, it is <strong>breaking up the banding</strong> that
+        8-bit gradients produce on almost every display.
+      </p>
+    </div>
+
+    <main>
+      <section>
+        <h2>1 · Film grain <span>de-banding</span></h2>
+        <p class="lead">
+          The gradient on the left is a normal CSS gradient. Look at the
+          transition — those visible steps are 8-bit quantisation. The right
+          one is identical plus a turbulence overlay at 42% opacity, which
+          dithers the boundary so the eye averages it back to smooth.
+        </p>
+        <div class="pair">
+          <div class="cell"><div class="banding"></div><span class="cell__tag">no grain — banded</span></div>
+          <div class="cell grain"><div class="banding"></div><span class="cell__tag">+ turbulence</span></div>
+        </div>
+        <div class="controls">
+          <label>grain opacity <input type="range" id="g-op" min="0" max="100" value="42" /><output id="g-op-out"></output></label>
+          <label>frequency <input type="range" id="g-freq" min="20" max="200" value="80" /><output id="g-freq-out"></output></label>
+          <label><input type="checkbox" id="g-anim" /> animate</label>
+        </div>
+        <pre><code>&lt;filter id="grain"&gt;
+  &lt;feTurbulence type="fractalNoise" baseFrequency="0.8"
+                numOctaves="4" stitchTiles="stitch"/&gt;
+  &lt;feColorMatrix type="saturate" values="0"/&gt;
+&lt;/filter&gt;
+
+/* rasterise it ONCE to a data: URI, then use it as a plain background */
+.grain::after { background-image: url("data:image/svg+xml,…"); }</code></pre>
+        <p class="callout">
+          <strong>Do not</strong> leave a live <code>filter: url(#grain)</code>
+          on a large or scrolling element — SVG filters rasterise on the CPU in
+          several engines. Bake the noise into a small tiling data URI, as this
+          page does, and it costs nothing.
+        </p>
+      </section>
+
+      <section>
+        <h2>2 · Mesh gradient <span>the modern backdrop</span></h2>
+        <p class="lead">
+          Four oversized radial gradients, one heavy blur, and a slow drift.
+          The drift is a <code>transform</code> on the layer — animating the
+          gradient positions instead would repaint the entire surface every
+          frame.
+        </p>
+        <div class="pair">
+          <div class="cell mesh"><div class="mesh__layer"></div><span class="cell__tag">blur 48px, 22s drift</span></div>
+          <div class="cell mesh grain"><div class="mesh__layer"></div><span class="cell__tag">+ grain — no banding</span></div>
+        </div>
+      </section>
+
+      <section>
+        <h2>3 · Ordered dithering <span>4×4 Bayer</span></h2>
+        <p class="lead">
+          The opposite intent: banding on purpose. A Bayer threshold matrix
+          tiled at 4px gives the deliberate cross-hatch of an early display,
+          and unlike a bitmap it scales to any size.
+        </p>
+        <div class="pair">
+          <div class="cell dither"><span class="cell__tag">bayer 4×4 · hard-light</span></div>
+          <div class="cell halftone"><span class="cell__tag">halftone · 15° · color-burn</span></div>
+        </div>
+        <p class="callout">
+          The halftone screen is rotated 15°. Real print screens are set off-axis
+          precisely so the dot rosette does not align with the grid beneath it
+          and produce moiré — the same reasoning applies to a pixel grid.
+        </p>
+      </section>
+
+      <section>
+        <h2>4 · Paper, and CRT <span>material and artefact</span></h2>
+        <div class="pair">
+          <div class="cell paper">
+            <div class="paper__text">
+              High-frequency turbulence, desaturated and multiplied over a warm
+              off-white. The fibre is doing very little individually — it is the
+              absence of a perfectly flat field that reads as material.
+            </div>
+            <span class="cell__tag">fibre · multiply</span>
+          </div>
+          <div class="cell crt">
+            <div class="crt__content">READY.</div>
+            <span class="cell__tag">scanlines + vignette</span>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>5 · Which blend mode <span>this is the actual decision</span></h2>
+        <p class="lead">
+          The same grain over the same gradient, seven ways. Blend mode matters
+          far more than opacity: <code>overlay</code> and
+          <code>soft-light</code> preserve the underlying colour and only
+          perturb luminance, which is what grain should do.
+          <code>multiply</code> and <code>screen</code> shift the whole surface
+          darker or lighter and will quietly break your contrast ratios.
+        </p>
+        <div class="blends" id="blends"></div>
+      </section>
+
+      <section>
+        <h2>Rules of thumb</h2>
+        <ul class="lead">
+          <li>
+            <strong>Grain belongs at 3–8% effective opacity.</strong> If you can
+            see it as texture rather than feel it as depth, it is too strong.
+          </li>
+          <li>
+            <strong>Bake it, do not filter it.</strong> A 200×200 tiling data
+            URI is a few kilobytes and costs nothing; a live SVG filter on a
+            scrolling container costs frames.
+          </li>
+          <li>
+            <strong>Use <code>overlay</code> or <code>soft-light</code></strong>
+            so the noise modulates luminance without shifting hue.
+          </li>
+          <li>
+            <strong>Animate the transform, never the gradient.</strong> Gradient
+            stops are paint; transforms are composite.
+          </li>
+          <li>
+            <strong>Never put texture behind body copy</strong> at a strength
+            that reduces contrast. Test it, do not eyeball it.
+          </li>
+        </ul>
+      </section>
+    </main>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

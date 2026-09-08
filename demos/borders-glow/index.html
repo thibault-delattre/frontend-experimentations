@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Borders &amp; Glow — Frontend Experimentations</title>
+    <link rel="stylesheet" href="../../src/styles/base.css" />
+    <style>
+      /* An @property registration is what makes an angle interpolable. Without
+         it, --angle is just a string and the gradient below cannot animate at
+         all — it will snap from 0deg to 360deg with nothing in between. This
+         single declaration is the reason rotating conic borders became
+         possible in plain CSS. */
+      @property --angle {
+        syntax: '<angle>';
+        inherits: false;
+        initial-value: 0deg;
+      }
+      @property --spot {
+        syntax: '<percentage>';
+        inherits: false;
+        initial-value: 0%;
+      }
+
+      main { max-width: 1080px; margin: 0 auto; padding: 0 var(--pad) 8rem; }
+      section { margin: 4rem 0; }
+      h2 { font-size: 1.25rem; display: flex; gap: 0.7rem; align-items: baseline; }
+      h2 span { font-family: var(--font-mono); font-size: 0.72rem; color: var(--accent-2); }
+      .lead { color: var(--fg-dim); max-width: 66ch; }
+      .callout { border-left: 2px solid var(--accent); padding-left: 1rem; color: var(--fg-dim); font-size: 0.88rem; margin: 1.2rem 0; }
+      pre { overflow-x: auto; background: var(--bg-1); border: 1px solid var(--line); border-radius: var(--radius); padding: 0.9rem 1.1rem; font-size: 0.76rem; }
+      .row { display: grid; gap: 1.2rem; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); margin: 1.4rem 0; }
+      .demo-card {
+        border-radius: 16px; padding: 1.5rem; min-height: 148px;
+        display: grid; align-content: center; gap: 0.3rem;
+      }
+      .demo-card b { font-size: 0.95rem; }
+      .demo-card span { font-size: 0.78rem; color: var(--fg-dim); }
+
+      /* ══ 1 · background-clip pair ═══════════════════════════════════════
+         Two backgrounds: the fill clipped to the padding box, the gradient
+         clipped to the border box. The transparent border reveals the
+         gradient in the gap. Simple, well-supported — but the card can never
+         be transparent, because the padding-box layer is opaque by design. */
+      .b-clip {
+        border: 2px solid transparent;
+        background:
+          linear-gradient(var(--bg-1), var(--bg-1)) padding-box,
+          linear-gradient(135deg, var(--accent), var(--accent-2), var(--accent-3)) border-box;
+      }
+
+      /* ══ 2 · mask-composite ═════════════════════════════════════════════
+         The general solution. A pseudo-element covers the card; two masks are
+         composited with `exclude`, which subtracts the content box from the
+         full box and leaves exactly the ring. Because it is a mask, whatever
+         is behind the card still shows through. */
+      .b-mask { position: relative; background: color-mix(in oklch, var(--bg-1) 60%, transparent); }
+      .b-mask::before {
+        content: ''; position: absolute; inset: 0; border-radius: inherit;
+        padding: 2px;                                  /* = the border width */
+        background: linear-gradient(135deg, var(--accent), var(--accent-3));
+        /* Fill the whole box in one layer, the content box in another… */
+        mask:
+          linear-gradient(#000 0 0) content-box,
+          linear-gradient(#000 0 0);
+        /* …then subtract the second from the first. What remains is the ring. */
+        mask-composite: exclude;
+        -webkit-mask-composite: xor;                   /* Safari's older name */
+        pointer-events: none;
+      }
+
+      /* ══ 3 · rotating conic ═════════════════════════════════════════════ */
+      .b-rotate { position: relative; background: var(--bg-1); }
+      .b-rotate::before {
+        content: ''; position: absolute; inset: 0; border-radius: inherit;
+        padding: 2px;
+        background: conic-gradient(
+          from var(--angle),
+          transparent 0deg 250deg,
+          var(--accent-2) 300deg,
+          oklch(95% 0.05 190) 330deg,
+          var(--accent) 350deg,
+          transparent 360deg
+        );
+        mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+        mask-composite: exclude;
+        -webkit-mask-composite: xor;
+        animation: spin-angle 4s linear infinite;
+        pointer-events: none;
+      }
+      @keyframes spin-angle { to { --angle: 360deg; } }
+
+      /* A second copy behind it, blurred, becomes the glow. The blur is on a
+         separate element so the card's own content is never blurred. */
+      .b-rotate::after {
+        content: ''; position: absolute; inset: -2px; border-radius: inherit;
+        background: conic-gradient(from var(--angle), transparent 0deg 280deg, var(--accent-2) 330deg, transparent 360deg);
+        filter: blur(14px); opacity: 0.65; z-index: -1;
+        animation: spin-angle 4s linear infinite;
+      }
+
+      /* ══ 4 · spotlight grid ═════════════════════════════════════════════
+         --mx/--my are written by ONE delegated listener on the container, not
+         one per card. Both the surface wash and the border ring read the same
+         two variables. */
+      .spot-grid { display: grid; gap: 1px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); background: var(--line); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+      .spot {
+        position: relative; background: var(--bg-1); padding: 1.6rem 1.4rem; min-height: 150px;
+        display: grid; align-content: center; gap: 0.3rem;
+      }
+      .spot__glow {
+        position: absolute; inset: 0; pointer-events: none; opacity: 0;
+        transition: opacity 0.35s;
+        background: radial-gradient(14rem 14rem at var(--mx) var(--my), oklch(72% 0.19 265 / 0.16), transparent 70%);
+      }
+      .spot-grid:hover .spot__glow { opacity: 1; }
+      /* The border ring: same pointer position, but masked to the edge only. */
+      .spot__ring {
+        position: absolute; inset: 0; pointer-events: none; opacity: 0;
+        transition: opacity 0.35s;
+        background: radial-gradient(9rem 9rem at var(--mx) var(--my), oklch(80% 0.19 265), transparent 70%);
+        mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+        mask-composite: exclude;
+        -webkit-mask-composite: xor;
+        padding: 1px;
+      }
+      .spot-grid:hover .spot__ring { opacity: 1; }
+
+      /* ══ 5 · rim highlight ══════════════════════════════════════════════ */
+      .rim-row { display: grid; gap: 1.2rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+      .rim-none { background: oklch(22% 0.016 275); border: 1px solid var(--line); }
+      .rim-yes {
+        background: oklch(22% 0.016 275); border: 1px solid var(--line);
+        box-shadow: inset 0 1px 0 oklch(100% 0 0 / 0.09), 0 1px 2px oklch(0% 0 0 / 0.5);
+      }
+      .rim-full {
+        background: linear-gradient(oklch(26% 0.018 275), oklch(20% 0.014 275));
+        border: 1px solid var(--line);
+        box-shadow:
+          inset 0 1px 0 oklch(100% 0 0 / 0.11),
+          inset 0 -1px 0 oklch(0% 0 0 / 0.3),
+          0 1px 2px oklch(0% 0 0 / 0.5),
+          0 8px 22px oklch(0% 0 0 / 0.3);
+      }
+
+      /* ══ 6 · animated dashes ════════════════════════════════════════════
+         CSS dashed borders cannot be animated and render badly around
+         corners. An SVG rect with rx handles both correctly. */
+      .dash-wrap { position: relative; }
+      .dash-wrap svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+      .dash-wrap rect {
+        fill: none; stroke: var(--accent-2); stroke-width: 2;
+        stroke-dasharray: 10 8; rx: 16;
+        animation: march 1s linear infinite;
+      }
+      @keyframes march { to { stroke-dashoffset: -18; } }
+
+      /* ══ 7 · glow without blurring content ══════════════════════════════ */
+      .glow-card { position: relative; background: var(--bg-1); border: 1px solid color-mix(in oklch, var(--accent) 45%, var(--line)); }
+      .glow-card::before {
+        content: ''; position: absolute; inset: 0; border-radius: inherit; z-index: -1;
+        background: linear-gradient(135deg, var(--accent), var(--accent-3));
+        filter: blur(22px); opacity: 0.5; scale: 0.94;
+        transition: opacity 0.4s, scale 0.4s var(--ease-out);
+      }
+      .glow-card:hover::before { opacity: 0.9; scale: 1.04; }
+
+      /* ══ 8 · focus rings ════════════════════════════════════════════════ */
+      .focus-demo { display: flex; gap: 1.2rem; flex-wrap: wrap; }
+      .focus-demo button {
+        font: inherit; font-size: 0.85rem; padding: 0.6rem 1.1rem; border-radius: 10px;
+        background: var(--bg-2); color: var(--fg); border: 1px solid var(--line); cursor: pointer;
+      }
+      /* Wrong: a border changes the box size, so the button jumps on focus. */
+      .focus-bad:focus-visible { outline: none; border: 3px solid var(--accent); }
+      /* Right: outline is painted outside the box and never affects layout. */
+      .focus-good:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    </style>
+  </head>
+  <body>
+    <div class="note">
+      <h1>Borders &amp; Glow</h1>
+      <p>
+        CSS cannot paint a gradient into <code>border-width</code>. Everything
+        below is a way around that — and the
+        <strong><code>mask-composite: exclude</code></strong> trick in §2 is the
+        one that generalises to every case, including rounded corners and
+        transparent backgrounds.
+      </p>
+    </div>
+
+    <main>
+      <section>
+        <h2>1 · background-clip pair <span>the simple one</span></h2>
+        <p class="lead">
+          Two background layers with different clip boxes, and a transparent
+          border to reveal the lower one. Well supported and cheap — but the
+          card can never be see-through, because the top layer must be opaque.
+        </p>
+        <div class="row">
+          <div class="demo-card b-clip"><b>padding-box + border-box</b><span>Opaque fill required.</span></div>
+        </div>
+        <pre><code>border: 2px solid transparent;
+background:
+  linear-gradient(var(--bg), var(--bg)) padding-box,
+  linear-gradient(135deg, …)            border-box;</code></pre>
+      </section>
+
+      <section>
+        <h2>2 · mask-composite <span>the general one</span></h2>
+        <p class="lead">
+          A pseudo-element painted with the gradient, then masked so only the
+          ring survives. Two mask layers — one covering the whole box, one
+          covering just the content box — composited with
+          <code>exclude</code>, which subtracts the second from the first.
+        </p>
+        <div class="row">
+          <div class="demo-card b-mask"><b>Transparent inside</b><span>The page shows through the card.</span></div>
+        </div>
+        <pre><code>&::before {
+  inset: 0; border-radius: inherit;
+  padding: 2px;                     /* the border width */
+  background: linear-gradient(135deg, …);
+  mask: linear-gradient(#000 0 0) content-box,   /* inner region */
+        linear-gradient(#000 0 0);               /* whole box    */
+  mask-composite: exclude;          /* whole − inner = the ring */
+  -webkit-mask-composite: xor;      /* Safari's older keyword   */
+}</code></pre>
+        <p class="callout">
+          <code>border-radius: inherit</code> is doing quiet work here: it keeps
+          the ring's curvature locked to the card's, so changing one radius
+          never leaves a mismatched outline.
+        </p>
+      </section>
+
+      <section>
+        <h2>3 · Rotating conic <span>needs @property</span></h2>
+        <p class="lead">
+          A conic gradient whose start angle animates. This is impossible
+          without registering the custom property — an unregistered
+          <code>--angle</code> is an opaque string, and CSS will jump straight
+          from one value to the next with no interpolation.
+        </p>
+        <div class="row">
+          <div class="demo-card b-rotate"><b>Registered &lt;angle&gt;</b><span>Now it can be tweened.</span></div>
+        </div>
+        <pre><code>@property --angle {
+  syntax: '&lt;angle&gt;';
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes spin { to { --angle: 360deg; } }</code></pre>
+      </section>
+
+      <section>
+        <h2>4 · Spotlight grid <span>one listener, many cards</span></h2>
+        <p class="lead">
+          Move the pointer across the grid. Both the surface wash and the
+          border highlight read the same <code>--mx</code>/<code>--my</code>,
+          written by a single delegated listener on the container — not one
+          per card.
+        </p>
+        <div class="spot-grid" id="spotGrid"></div>
+      </section>
+
+      <section>
+        <h2>5 · The rim highlight <span>dark-mode depth</span></h2>
+        <p class="lead">
+          A one-pixel light line along the top edge. On dark surfaces this does
+          more for perceived depth than any shadow, because it reads as an edge
+          catching light rather than as an object casting shade.
+        </p>
+        <div class="rim-row">
+          <div class="demo-card rim-none"><b>Border only</b><span>Flat. Ambiguous edges.</span></div>
+          <div class="demo-card rim-yes"><b>+ inset top highlight</b><span>Suddenly it has a top surface.</span></div>
+          <div class="demo-card rim-full"><b>+ gradient + bottom shade</b><span>Fully modelled.</span></div>
+        </div>
+        <pre><code>box-shadow:
+  inset 0  1px 0 oklch(100% 0 0 / 0.11),   /* lit top edge   */
+  inset 0 -1px 0 oklch(0%   0 0 / 0.30),   /* shaded bottom  */
+  0 1px 2px  oklch(0% 0 0 / 0.5),
+  0 8px 22px oklch(0% 0 0 / 0.3);</code></pre>
+      </section>
+
+      <section>
+        <h2>6 · Marching dashes <span>SVG, not CSS</span></h2>
+        <p class="lead">
+          CSS dashed borders cannot be animated and break at rounded corners.
+          An SVG <code>rect</code> with <code>rx</code> and an animated
+          <code>stroke-dashoffset</code> handles both correctly.
+        </p>
+        <div class="row">
+          <div class="dash-wrap">
+            <div class="demo-card" style="border: 1px solid transparent"><b>Drop zone</b><span>Dashes march around the radius.</span></div>
+            <svg aria-hidden="true"><rect x="1" y="1" width="calc(100% - 2px)" height="calc(100% - 2px)" /></svg>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>7 · Glow &amp; focus <span>two things people get wrong</span></h2>
+        <p class="lead">
+          A glow must never be a <code>filter</code> on the element itself —
+          that blurs the text too. Put a blurred, scaled copy behind it.
+        </p>
+        <div class="row">
+          <div class="demo-card glow-card"><b>Hover for glow</b><span>Text stays perfectly sharp.</span></div>
+        </div>
+        <p class="lead" style="margin-top: 2rem">
+          And a focus ring must be an <code>outline</code>, never a
+          <code>border</code>. Tab between these two:
+        </p>
+        <div class="focus-demo">
+          <button class="focus-bad" type="button">Border ring (jumps)</button>
+          <button class="focus-good" type="button">Outline ring (stable)</button>
+        </div>
+        <p class="callout">
+          <code>outline</code> is painted outside the box and does not
+          participate in layout, so it cannot shift anything.
+          <code>outline-offset</code> then gives it breathing room without a
+          wrapper element.
+        </p>
+      </section>
+    </main>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

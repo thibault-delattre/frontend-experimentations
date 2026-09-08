@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Image Treatment — Frontend Experimentations</title>
+    <link rel="stylesheet" href="../../src/styles/base.css" />
+    <style>
+      main { max-width: 1080px; margin: 0 auto; padding: 0 var(--pad) 8rem; }
+      section { margin: 4rem 0; }
+      h2 { font-size: 1.25rem; display: flex; gap: 0.7rem; align-items: baseline; }
+      h2 span { font-family: var(--font-mono); font-size: 0.72rem; color: var(--accent-2); }
+      .lead { color: var(--fg-dim); max-width: 66ch; }
+      .callout { border-left: 2px solid var(--accent); padding-left: 1rem; color: var(--fg-dim); font-size: 0.88rem; margin: 1.2rem 0; }
+      pre { overflow-x: auto; background: var(--bg-1); border: 1px solid var(--line); border-radius: var(--radius); padding: 0.9rem 1.1rem; font-size: 0.76rem; }
+      .row { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); margin: 1.4rem 0; }
+      figure { margin: 0; }
+      figcaption { font-family: var(--font-mono); font-size: 0.68rem; color: var(--fg-faint); margin-top: 0.45rem; }
+
+      /* Every "photograph" on this page is painted by main.js into a canvas.
+         aspect-ratio on the frame means the box is reserved before the image
+         paints, so nothing shifts — the same discipline a real <img> needs. */
+      .frame {
+        position: relative; aspect-ratio: 4 / 3; border-radius: 12px;
+        overflow: hidden; border: 1px solid var(--line); background: var(--bg-2);
+        isolation: isolate;
+      }
+      .frame img, .frame canvas { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+      /* ── 1 · DUOTONE (CSS) ───────────────────────────────────────────────
+         grayscale first (so the colour layer has a neutral base), then a
+         two-stop gradient in `color` blend mode, which takes hue+chroma from
+         the top layer and luminance from below. */
+      .duotone-css img { filter: grayscale(1) contrast(1.25) brightness(0.95); }
+      .duotone-css::after {
+        content: ''; position: absolute; inset: 0;
+        background: linear-gradient(135deg, var(--duo-a, oklch(45% 0.2 275)), var(--duo-b, oklch(80% 0.18 60)));
+        mix-blend-mode: color; pointer-events: none;
+      }
+
+      /* ── 2 · BLEND MATRIX ────────────────────────────────────────────── */
+      .blend-cell::after {
+        content: ''; position: absolute; inset: 0; pointer-events: none;
+        background: linear-gradient(140deg, oklch(60% 0.22 280), oklch(72% 0.2 40));
+        mix-blend-mode: var(--mode);
+      }
+
+      /* ── 3 · MASKS ───────────────────────────────────────────────────────
+         mask-image takes the alpha of a gradient. The -webkit- prefix is still
+         needed for older Safari, and both must be written or one engine
+         silently shows the unmasked image. */
+      .mask-fade img {
+        -webkit-mask-image: linear-gradient(to bottom, #000 35%, transparent 95%);
+        mask-image: linear-gradient(to bottom, #000 35%, transparent 95%);
+      }
+      .mask-vignette img {
+        -webkit-mask-image: radial-gradient(70% 70% at 50% 45%, #000 40%, transparent 100%);
+        mask-image: radial-gradient(70% 70% at 50% 45%, #000 40%, transparent 100%);
+      }
+      .mask-text {
+        display: grid; place-items: center; background: var(--bg-1);
+      }
+      .mask-text h3 {
+        margin: 0; font-size: clamp(2rem, 9vw, 4rem); font-weight: 800; letter-spacing: -0.04em;
+        background-image: var(--photo); background-size: cover; background-position: center;
+        -webkit-background-clip: text; background-clip: text; color: transparent;
+      }
+
+      /* ── 4 · CLIP-PATH REVEALS ───────────────────────────────────────────
+         clip-path animates cheaply because it is a compositor-friendly
+         property — unlike, say, animating width or height. */
+      .clip-inset img { clip-path: inset(0 100% 0 0); transition: clip-path 0.8s var(--ease-out); }
+      .clip-inset:hover img, .clip-inset:focus-within img { clip-path: inset(0 0 0 0); }
+      .clip-poly img { clip-path: polygon(0 0, 0 0, 0 100%, 0 100%); transition: clip-path 0.9s var(--ease-out); }
+      .clip-poly:hover img, .clip-poly:focus-within img { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); }
+
+      /* ── 5 · KEN BURNS ───────────────────────────────────────────────────
+         The image MUST be oversized. Scaling from 1.0 upward is fine, but any
+         translate at scale 1 exposes the edge — so start above 1. */
+      .ken img { scale: 1.15; transform-origin: 60% 40%; animation: ken 18s var(--ease-io) infinite alternate; }
+      @keyframes ken {
+        from { scale: 1.15; translate: 0 0; }
+        to   { scale: 1.32; translate: -3% 2%; }
+      }
+
+      /* ── 6 · :has() SIBLING DIM ──────────────────────────────────────────
+         The container styles its OWN children based on which one is hovered.
+         No JavaScript, no class toggling. */
+      .gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.8rem; }
+      .gallery .frame { transition: filter 0.4s, scale 0.4s var(--ease-out); }
+      .gallery:has(.frame:hover) .frame { filter: grayscale(1) brightness(0.55); }
+      .gallery:has(.frame:hover) .frame:hover { filter: none; scale: 1.03; }
+
+      /* ── 7 · PROGRESSIVE REVEAL ──────────────────────────────────────── */
+      .progressive .ph {
+        position: absolute; inset: 0; filter: blur(18px); scale: 1.1;
+        transition: opacity 0.6s var(--ease-out);
+      }
+      .progressive.loaded .ph { opacity: 0; }
+      .progressive .full { opacity: 0; transition: opacity 0.6s var(--ease-out); }
+      .progressive.loaded .full { opacity: 1; }
+
+      .controls {
+        display: flex; gap: 1.4rem; flex-wrap: wrap; align-items: center;
+        padding: 0.85rem 1.1rem; border: 1px solid var(--line);
+        border-radius: var(--radius); background: var(--bg-1);
+        font-size: 0.8rem; color: var(--fg-dim); margin: 1.2rem 0;
+      }
+      .controls label { display: flex; align-items: center; gap: 0.6rem; }
+      .controls input[type='range'] { accent-color: var(--accent); width: 130px; }
+      .controls output { font-family: var(--font-mono); color: var(--accent-2); min-width: 3rem; }
+      .controls button {
+        font: inherit; font-size: 0.78rem; background: var(--bg-2); color: var(--fg);
+        border: 1px solid var(--line); border-radius: 100px; padding: 0.3rem 0.9rem; cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- SVG duotone. feComponentTransfer maps each channel through its own
+         ramp, so shadows land on one colour and highlights on another. It is
+         more faithful than the CSS version because it operates per channel
+         rather than compositing a flat colour on top. -->
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <filter id="duotone-svg" color-interpolation-filters="sRGB">
+        <feColorMatrix type="matrix" values="0.2126 0.7152 0.0722 0 0
+                                             0.2126 0.7152 0.0722 0 0
+                                             0.2126 0.7152 0.0722 0 0
+                                             0      0      0      1 0" />
+        <feComponentTransfer id="duo-transfer">
+          <feFuncR type="table" tableValues="0.16 0.95" />
+          <feFuncG type="table" tableValues="0.09 0.78" />
+          <feFuncB type="table" tableValues="0.42 0.35" />
+        </feComponentTransfer>
+      </filter>
+    </svg>
+
+    <div class="note">
+      <h1>Image Treatment</h1>
+      <p>
+        How arbitrary imagery is made to look art-directed. Almost all of it is
+        <strong>blend modes and masks</strong> — and every "photograph" here is
+        painted procedurally into a canvas, so the page ships no assets.
+      </p>
+    </div>
+
+    <main>
+      <section>
+        <h2>1 · Duotone <span>two ways</span></h2>
+        <p class="lead">
+          The CSS version desaturates then composites a gradient in
+          <code>color</code> blend mode. The SVG version maps each channel
+          through its own transfer curve, which lands shadows and highlights on
+          genuinely different colours rather than tinting uniformly.
+        </p>
+        <div class="row">
+          <figure><div class="frame" data-photo="1"></div><figcaption>original</figcaption></figure>
+          <figure><div class="frame duotone-css" data-photo="1"></div><figcaption>CSS · grayscale + mix-blend-mode: color</figcaption></figure>
+          <figure><div class="frame" data-photo="1" style="filter: url(#duotone-svg)"></div><figcaption>SVG · feComponentTransfer</figcaption></figure>
+        </div>
+        <div class="controls">
+          <label>shadow hue <input type="range" id="duo-a" min="0" max="359" value="275" /><output id="duo-a-out"></output></label>
+          <label>highlight hue <input type="range" id="duo-b" min="0" max="359" value="60" /><output id="duo-b-out"></output></label>
+        </div>
+      </section>
+
+      <section>
+        <h2>2 · Blend modes <span>what each is actually for</span></h2>
+        <p class="lead">
+          The same gradient over the same image, eight ways. These are not
+          interchangeable looks — each one preserves something different.
+        </p>
+        <div class="row" id="blends"></div>
+      </section>
+
+      <section>
+        <h2>3 · Masks <span>fade to nothing</span></h2>
+        <p class="lead">
+          <code>mask-image</code> uses a gradient's alpha as a stencil. It is
+          how an image fades into the page rather than ending at a hard
+          rectangle — and it works over any background, which a gradient
+          overlay does not.
+        </p>
+        <div class="row">
+          <figure><div class="frame mask-fade" data-photo="2"></div><figcaption>linear fade to transparent</figcaption></figure>
+          <figure><div class="frame mask-vignette" data-photo="2"></div><figcaption>radial vignette mask</figcaption></figure>
+          <figure><div class="frame mask-text" id="maskText"><h3>MASK</h3></div><figcaption>background-clip: text</figcaption></figure>
+        </div>
+        <p class="callout">
+          Always write both <code>-webkit-mask-image</code> and
+          <code>mask-image</code>. Omit the prefix and older Safari shows the
+          image completely unmasked — a silent failure, not a visible one.
+        </p>
+      </section>
+
+      <section>
+        <h2>4 · clip-path reveals <span>hover or focus</span></h2>
+        <p class="lead">
+          <code>clip-path</code> is compositor-friendly, so these wipes are
+          free. Both cards are focusable, so the reveal is reachable by
+          keyboard — <code>:focus-within</code> alongside <code>:hover</code>.
+        </p>
+        <div class="row">
+          <figure><div class="frame clip-inset" data-photo="3" tabindex="0"></div><figcaption>inset() wipe</figcaption></figure>
+          <figure><div class="frame clip-poly" data-photo="4" tabindex="0"></div><figcaption>polygon() diagonal</figcaption></figure>
+          <figure><div class="frame ken" data-photo="3"></div><figcaption>Ken Burns — note scale starts at 1.15</figcaption></figure>
+        </div>
+        <p class="callout">
+          The Ken Burns image starts at <code>scale: 1.15</code>, not 1. Any
+          translate at scale 1 drags the image's own edge into frame — the most
+          common bug in this effect.
+        </p>
+      </section>
+
+      <section>
+        <h2>5 · Sibling dimming with :has() <span>no JavaScript</span></h2>
+        <p class="lead">
+          The container asks "am I containing a hovered child?" and restyles
+          all of them. This used to require a mouseenter listener and a class
+          on the parent.
+        </p>
+        <div class="gallery" id="gallery"></div>
+        <pre><code>.gallery:has(.frame:hover) .frame       { filter: grayscale(1) brightness(.55); }
+.gallery:has(.frame:hover) .frame:hover { filter: none; scale: 1.03; }</code></pre>
+      </section>
+
+      <section>
+        <h2>6 · Progressive reveal <span>blur-up</span></h2>
+        <p class="lead">
+          A tiny blurred placeholder cross-fades to the full image once it has
+          actually decoded. Use <code>img.decode()</code> rather than the load
+          event — <code>load</code> fires before the bitmap is ready to paint,
+          so you can still get a blank frame.
+        </p>
+        <div class="row">
+          <figure>
+            <div class="frame progressive" id="prog"></div>
+            <figcaption>placeholder → decoded full image</figcaption>
+          </figure>
+          <figure style="align-self: end">
+            <button type="button" id="reload" style="font: inherit; font-size: .8rem; background: var(--bg-2); color: var(--fg); border: 1px solid var(--line); border-radius: 100px; padding: .4rem 1rem; cursor: pointer">
+              replay the load
+            </button>
+            <figcaption>simulated 900ms network</figcaption>
+          </figure>
+        </div>
+        <pre><code>const img = new Image();
+img.src = full;
+await img.decode();        // NOT onload — decode() waits for a paintable bitmap
+wrapper.classList.add('loaded');</code></pre>
+      </section>
+
+      <section>
+        <h2>The layout rules that matter more than any of this</h2>
+        <ul class="lead">
+          <li>
+            <strong>Always reserve the box.</strong> <code>width</code> and
+            <code>height</code> attributes on the <code>&lt;img&gt;</code>, or
+            <code>aspect-ratio</code> on its frame. Without it the page reflows
+            when each image arrives, which is most of a bad CLS score.
+          </li>
+          <li>
+            <strong><code>object-fit: cover</code> plus
+            <code>object-position</code></strong> so the crop is deliberate.
+            The default centre crop decapitates people.
+          </li>
+          <li>
+            <strong><code>loading="lazy"</code> below the fold,
+            <code>fetchpriority="high"</code> on the LCP image.</strong> Lazy-
+            loading the hero is a classic self-inflicted wound.
+          </li>
+          <li>
+            <strong>Never bake text into an image.</strong> It cannot be
+            selected, translated, searched or read aloud, and it blurs on
+            zoom.
+          </li>
+        </ul>
+      </section>
+    </main>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Shadows, Light &amp; Depth — Frontend Experimentations</title>
+    <link rel="stylesheet" href="../../src/styles/base.css" />
+    <style>
+      /* ═══════════════════════════════════════════════════════════════════
+         WHY ONE box-shadow ALWAYS LOOKS CHEAP
+
+         A real shadow's penumbra is not uniform. Close to the object it is
+         dark and sharp; further away it is soft and faint. A single shadow
+         approximates that with a straight ramp, which the eye reads as fake.
+
+         Stacking 4-6 shadows with geometrically increasing blur and
+         decreasing opacity approximates the real falloff curve. That is the
+         entire trick, and it is the difference between "has a shadow" and
+         "sits on the page".
+         ═══════════════════════════════════════════════════════════════════ */
+
+      :root {
+        --light-x: 0.5;   /* 0..1, written by the draggable light */
+        --light-y: 0.1;
+      }
+
+      main { max-width: 1080px; margin: 0 auto; padding: 0 var(--pad) 8rem; }
+      section { margin: 4.5rem 0; }
+      h2 { font-size: 1.3rem; }
+      .lead { color: var(--fg-dim); max-width: 66ch; }
+      .callout { border-left: 2px solid var(--accent); padding-left: 1rem; color: var(--fg-dim); font-size: 0.9rem; margin: 1.2rem 0; }
+      pre { overflow-x: auto; background: var(--bg-1); border: 1px solid var(--line); border-radius: var(--radius); padding: 0.9rem 1.1rem; font-size: 0.76rem; }
+
+      /* A light surface, because shadows are a light-mode phenomenon and
+         demonstrating them on near-black would be dishonest. */
+      .surface {
+        background: oklch(96% 0.006 265);
+        color: oklch(25% 0.02 265);
+        border-radius: var(--radius);
+        padding: 3rem 2rem;
+        display: grid;
+        gap: 2.5rem;
+        place-items: center;
+      }
+      .surface h3 { color: oklch(30% 0.02 265); }
+      .surface .cap { font-family: var(--font-mono); font-size: 0.7rem; color: oklch(50% 0.02 265); letter-spacing: 0.05em; text-transform: uppercase; }
+
+      .card {
+        width: 200px; aspect-ratio: 4 / 3;
+        background: white; border-radius: 14px;
+        display: grid; place-items: center;
+        font-weight: 600; font-size: 0.9rem; color: oklch(35% 0.02 265);
+      }
+
+      .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 2.5rem; width: 100%; }
+      .pair > div { display: grid; gap: 0.7rem; justify-items: center; }
+
+      /* --- 1 · flat vs layered ------------------------------------------- */
+      .flat { box-shadow: 0 10px 24px oklch(25% 0.03 265 / 0.28); }
+
+      /* Six stops. Blur roughly doubles each step; opacity roughly halves.
+         The first is the contact shadow (see §4), the last is the ambient
+         occlusion that grounds the object in the room. */
+      .layered {
+        box-shadow:
+          0 1px 1px oklch(25% 0.03 265 / 0.07),
+          0 2px 2px oklch(25% 0.03 265 / 0.07),
+          0 4px 4px oklch(25% 0.03 265 / 0.07),
+          0 8px 8px oklch(25% 0.03 265 / 0.07),
+          0 16px 16px oklch(25% 0.03 265 / 0.07),
+          0 32px 32px oklch(25% 0.03 265 / 0.05);
+      }
+
+      /* --- 2 · elevation ramp -------------------------------------------- */
+      .ramp { display: flex; flex-wrap: wrap; gap: 1.6rem; justify-content: center; }
+      .ramp .card { width: 130px; aspect-ratio: 1; font-size: 0.8rem; }
+
+      /* --- 3 · shared light source ---------------------------------------- */
+      /* Every card derives its offset from the SAME two variables, so moving
+         the light moves every shadow coherently. Cards lit from inconsistent
+         directions are the most common tell of a hand-tuned shadow set. */
+      .scene {
+        position: relative; width: 100%; min-height: 340px;
+        display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.6rem;
+        place-items: center; padding: 2rem 0;
+      }
+      .scene .card {
+        width: 100%; max-width: 170px;
+        --dx: calc((0.5 - var(--light-x)) * 60px);
+        --dy: calc((0.5 - var(--light-y)) * 60px);
+        box-shadow:
+          calc(var(--dx) * 0.1) calc(var(--dy) * 0.1) 2px oklch(25% 0.03 265 / 0.1),
+          calc(var(--dx) * 0.3) calc(var(--dy) * 0.3) 6px oklch(25% 0.03 265 / 0.09),
+          calc(var(--dx) * 0.6) calc(var(--dy) * 0.6) 16px oklch(25% 0.03 265 / 0.08),
+          var(--dx) var(--dy) 34px oklch(25% 0.03 265 / 0.07);
+      }
+      .light {
+        position: absolute; width: 30px; height: 30px; border-radius: 50%;
+        background: radial-gradient(circle, oklch(96% 0.14 90), oklch(80% 0.16 75));
+        box-shadow: 0 0 26px 10px oklch(88% 0.15 85 / 0.55);
+        cursor: grab; touch-action: none; z-index: 3;
+        border: 2px solid oklch(100% 0 0 / 0.7);
+      }
+      .light:active { cursor: grabbing; }
+
+      /* --- 4 · tinted vs black -------------------------------------------- */
+      .tinted-bg { background: oklch(92% 0.06 25); }
+      .shadow-black {
+        box-shadow: 0 2px 4px oklch(0% 0 0 / 0.12), 0 8px 16px oklch(0% 0 0 / 0.12), 0 20px 34px oklch(0% 0 0 / 0.1);
+      }
+      /* The shadow carries the hue of the surface it falls on, at very low
+         lightness. This is what real coloured bounce light does. */
+      .shadow-tinted {
+        box-shadow:
+          0 2px 4px oklch(45% 0.16 25 / 0.16),
+          0 8px 16px oklch(45% 0.16 25 / 0.16),
+          0 20px 34px oklch(45% 0.16 25 / 0.14);
+      }
+
+      /* --- 5 · contact shadow --------------------------------------------- */
+      .no-contact {
+        box-shadow: 0 14px 28px oklch(25% 0.03 265 / 0.16), 0 28px 50px oklch(25% 0.03 265 / 0.12);
+      }
+      .with-contact {
+        box-shadow:
+          0 1px 2px oklch(25% 0.03 265 / 0.28),      /* ← the contact shadow */
+          0 14px 28px oklch(25% 0.03 265 / 0.14),
+          0 28px 50px oklch(25% 0.03 265 / 0.1);
+      }
+
+      /* --- 6 · inset / pressed --------------------------------------------- */
+      .inset-demo { display: flex; gap: 1.2rem; flex-wrap: wrap; justify-content: center; }
+      .inset-demo button {
+        font: inherit; font-weight: 600; font-size: 0.85rem;
+        padding: 0.75rem 1.4rem; border-radius: 10px; cursor: pointer;
+        background: oklch(97% 0.004 265); color: oklch(30% 0.02 265);
+        border: 1px solid oklch(86% 0.008 265);
+        box-shadow: 0 1px 1px oklch(25% 0.03 265 / 0.06), 0 2px 4px oklch(25% 0.03 265 / 0.06);
+        transition: box-shadow 0.12s, translate 0.12s;
+      }
+      .inset-demo button:active {
+        translate: 0 1px;
+        box-shadow: inset 0 2px 4px oklch(25% 0.03 265 / 0.16);
+      }
+      .well {
+        background: oklch(93% 0.006 265); border-radius: 12px; padding: 1.2rem 1.6rem;
+        box-shadow: inset 0 2px 5px oklch(25% 0.03 265 / 0.14), inset 0 1px 1px oklch(25% 0.03 265 / 0.1);
+        color: oklch(40% 0.02 265); font-size: 0.85rem;
+      }
+
+      /* --- 7 · dark-mode elevation ---------------------------------------- */
+      /* On a dark surface a shadow has almost nowhere to go — the page is
+         already dark. Elevation there comes from a LIGHTER fill plus a 1px
+         top rim highlight that reads as a lit edge. */
+      .dark-demo { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1.2rem; width: 100%; }
+      .dark-card {
+        border-radius: 12px; padding: 1.4rem 1rem; text-align: center;
+        font-size: 0.82rem; color: var(--fg-dim);
+        border: 1px solid var(--line);
+      }
+      .dark-card b { display: block; color: var(--fg); margin-bottom: 0.3rem; }
+      .dark-shadow-only { background: var(--bg-0); box-shadow: 0 12px 28px oklch(0% 0 0 / 0.6); }
+      .dark-fill-only { background: oklch(24% 0.016 275); box-shadow: none; }
+      /* fill + rim: the rim is what sells it */
+      .dark-correct {
+        background: oklch(24% 0.016 275);
+        box-shadow:
+          inset 0 1px 0 oklch(100% 0 0 / 0.07),
+          0 1px 2px oklch(0% 0 0 / 0.4),
+          0 8px 20px oklch(0% 0 0 / 0.35);
+      }
+
+      /* --- 8 · animating elevation ---------------------------------------- */
+      /* box-shadow cannot be composited, so transitioning it repaints every
+         frame. Instead put the raised shadow on a pseudo-element and
+         cross-fade its OPACITY, which the compositor handles for free. */
+      .perf { position: relative; transition: translate 0.25s var(--ease-out); }
+      .perf::after {
+        content: ''; position: absolute; inset: 0; border-radius: inherit;
+        box-shadow: 0 10px 20px oklch(25% 0.03 265 / 0.14), 0 22px 44px oklch(25% 0.03 265 / 0.12);
+        opacity: 0; transition: opacity 0.25s var(--ease-out);
+        pointer-events: none;
+      }
+      .perf:hover { translate: 0 -4px; }
+      .perf:hover::after { opacity: 1; }
+
+      .panel {
+        display: flex; gap: 1.4rem; flex-wrap: wrap; align-items: center;
+        padding: 0.9rem 1.1rem; border: 1px solid var(--line);
+        border-radius: var(--radius); background: var(--bg-1);
+        font-size: 0.8rem; color: var(--fg-dim); margin: 1.2rem 0;
+      }
+      .panel label { display: flex; align-items: center; gap: 0.6rem; }
+      .panel input { accent-color: var(--accent); width: 140px; }
+      .panel output { font-family: var(--font-mono); color: var(--accent-2); min-width: 2.5rem; }
+    </style>
+  </head>
+  <body>
+    <div class="note">
+      <h1>Shadows, Light &amp; Depth</h1>
+      <p>
+        A single <code>box-shadow</code> always reads as cheap, because real
+        penumbra is not a straight ramp. Everything below is about
+        <strong>approximating the falloff</strong> and keeping one light source
+        honest across a whole interface.
+      </p>
+    </div>
+
+    <main>
+      <section>
+        <h2>1 · One shadow vs. six</h2>
+        <p class="lead">
+          Same apparent height, same colour, same corner radius. The only
+          difference is that the right-hand card stacks six shadows whose blur
+          doubles and whose opacity halves at each step.
+        </p>
+        <div class="surface">
+          <div class="pair">
+            <div>
+              <div class="card flat">flat</div>
+              <span class="cap">one shadow</span>
+            </div>
+            <div>
+              <div class="card layered">layered</div>
+              <span class="cap">six stops</span>
+            </div>
+          </div>
+        </div>
+        <pre><code>box-shadow:
+  0  1px  1px  oklch(25% .03 265 / .07),
+  0  2px  2px  oklch(25% .03 265 / .07),
+  0  4px  4px  oklch(25% .03 265 / .07),
+  0  8px  8px  oklch(25% .03 265 / .07),
+  0 16px 16px  oklch(25% .03 265 / .07),
+  0 32px 32px  oklch(25% .03 265 / .05);</code></pre>
+      </section>
+
+      <section>
+        <h2>2 · An elevation ramp</h2>
+        <p class="lead">
+          Six levels generated from one function, so the whole scale stays
+          internally consistent. Ship them as custom properties and never write
+          an ad-hoc shadow again.
+        </p>
+        <div class="surface">
+          <div class="ramp" id="ramp"></div>
+        </div>
+        <p class="callout">
+          Levels map to meaning, not to taste: 0 flush, 1 cards, 2 raised
+          buttons, 3 dropdowns, 4 modals, 5 anything dragged. If two components
+          have the same importance they get the same level.
+        </p>
+      </section>
+
+      <section>
+        <h2>3 · One light source</h2>
+        <p class="lead">
+          Every card here derives its offset from the same
+          <code>--light-x</code> / <code>--light-y</code> pair.
+          <strong>Drag the light.</strong> Inconsistent shadow directions across
+          a UI are the clearest sign the shadows were tuned one at a time.
+        </p>
+        <div class="surface" style="padding: 1.5rem">
+          <div class="scene" id="scene">
+            <div class="light" id="light" tabindex="0" role="slider"
+                 aria-label="Light position" aria-valuetext="centre top"></div>
+            <div class="card">A</div>
+            <div class="card">B</div>
+            <div class="card">C</div>
+            <div class="card">D</div>
+            <div class="card">E</div>
+            <div class="card">F</div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>4 · Shadows are not black</h2>
+        <p class="lead">
+          A pure black shadow desaturates whatever it falls on and reads as
+          dirt. A shadow carrying the surface's own hue at low lightness reads
+          as light.
+        </p>
+        <div class="surface tinted-bg">
+          <div class="pair">
+            <div>
+              <div class="card shadow-black">black</div>
+              <span class="cap" style="color: oklch(40% 0.1 25)">oklch(0% 0 0)</span>
+            </div>
+            <div>
+              <div class="card shadow-tinted">tinted</div>
+              <span class="cap" style="color: oklch(40% 0.1 25)">hue of the surface</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>5 · The contact shadow</h2>
+        <p class="lead">
+          A tight, dark, almost unblurred shadow directly beneath the object.
+          Without it a card appears to hover a centimetre off the page; with it
+          the same card is resting on it. One extra line.
+        </p>
+        <div class="surface">
+          <div class="pair">
+            <div>
+              <div class="card no-contact">floating</div>
+              <span class="cap">soft shadows only</span>
+            </div>
+            <div>
+              <div class="card with-contact">resting</div>
+              <span class="cap">+ 0 1px 2px / 28%</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>6 · Inset — pressed and recessed</h2>
+        <p class="lead">
+          The same principle inverted. A pressed control gains an inner shadow
+          and loses its outer one; a well or track is permanently inset.
+        </p>
+        <div class="surface">
+          <div class="inset-demo">
+            <button type="button">Press and hold me</button>
+            <button type="button">And me</button>
+          </div>
+          <div class="well">A recessed well — inset shadow, no outer shadow, slightly darker fill.</div>
+        </div>
+      </section>
+
+      <section>
+        <h2>7 · Dark mode changes the rules</h2>
+        <p class="lead">
+          On a dark surface there is nothing for a shadow to darken. Elevation
+          has to come from a <strong>lighter fill</strong>, and the thing that
+          actually sells it is a one-pixel <strong>rim highlight</strong> along
+          the top edge — a lit edge, not a cast shadow.
+        </p>
+        <div class="dark-demo">
+          <div class="dark-card dark-shadow-only"><b>Shadow only</b>Barely reads. This is what happens when a light-mode shadow scale is reused unchanged.</div>
+          <div class="dark-card dark-fill-only"><b>Lighter fill</b>Better — but flat, and the edges are ambiguous.</div>
+          <div class="dark-card dark-correct"><b>Fill + rim + shadow</b>The inset top highlight is doing most of the work here.</div>
+        </div>
+        <pre><code>box-shadow:
+  inset 0 1px 0 oklch(100% 0 0 / 0.07),   /* the rim — this is the one */
+  0 1px 2px  oklch(0% 0 0 / 0.4),
+  0 8px 20px oklch(0% 0 0 / 0.35);</code></pre>
+      </section>
+
+      <section>
+        <h2>8 · Never animate box-shadow</h2>
+        <p class="lead">
+          <code>box-shadow</code> is not a compositor property, so transitioning
+          it repaints the element every frame. Put the raised shadow on a
+          pseudo-element and cross-fade its <code>opacity</code> instead — the
+          visual result is identical and it runs on the GPU.
+          <strong>Hover the card.</strong>
+        </p>
+        <div class="surface">
+          <div class="card layered perf">hover me</div>
+        </div>
+        <pre><code>.card::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit;
+  box-shadow: /* the RAISED shadow */;
+  opacity: 0; transition: opacity .25s;
+}
+.card:hover::after { opacity: 1; }   /* composited, no repaint */</code></pre>
+      </section>
+    </main>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

@@ -1,4 +1,5 @@
 import { bySlug } from './registry.js';
+import { PROMPTS } from './prompts.js';
 
 /**
  * Injects the sticky top bar on a demo page.
@@ -16,8 +17,11 @@ export function mountDemoBar() {
     <span class="demo-bar__title">${demo.title}</span>
     <span class="demo-bar__tags">${demo.tags
       .map((t) => `<span class="tag">${t}</span>`)
-      .join('')}</span>`;
+      .join('')}</span>
+    <button class="demo-bar__prompt" type="button" data-prompt>✦ prompt</button>`;
   document.body.prepend(bar);
+
+  mountPromptDialog(slug, demo);
 
   // Demo pages don't each declare a favicon; the bar adds it.
   if (!document.querySelector('link[rel="icon"]')) {
@@ -29,6 +33,70 @@ export function mountDemoBar() {
   }
 
   return demo;
+}
+
+/**
+ * Builds the "✦ prompt" dialog: the brief you would hand an AI to rebuild this
+ * page from nothing. Uses a native <dialog>, so Escape, focus trapping and the
+ * ::backdrop all come for free.
+ */
+function mountPromptDialog(slug, demo) {
+  const prompt = PROMPTS[slug];
+  const btn = document.querySelector('[data-prompt]');
+  if (!prompt) {
+    btn?.remove();
+    return;
+  }
+
+  const dlg = document.createElement('dialog');
+  dlg.className = 'prompt-dlg';
+  dlg.innerHTML = `
+    <div class="prompt-dlg__head">
+      <div>
+        <h2>Rebuild “${demo.title}” with AI</h2>
+        <p>Paste this into Claude, ChatGPT, Cursor or v0. It is written to be
+           self-contained — no reference to this repo is needed.</p>
+      </div>
+      <button type="button" data-close aria-label="Close">✕</button>
+    </div>
+    <textarea class="prompt-dlg__body" readonly spellcheck="false"></textarea>
+    <div class="prompt-dlg__foot">
+      <span class="prompt-dlg__hint" data-count></span>
+      <button type="button" data-copy class="prompt-dlg__copy">Copy prompt</button>
+    </div>`;
+
+  // textContent, never innerHTML: the prompt contains angle brackets and braces
+  // that would otherwise be parsed as markup.
+  const area = dlg.querySelector('textarea');
+  area.value = prompt.trim();
+  dlg.querySelector('[data-count]').textContent =
+    `${prompt.trim().split(/\s+/).length} words · ${slug}`;
+
+  document.body.append(dlg);
+
+  btn.addEventListener('click', () => dlg.showModal());
+  dlg.querySelector('[data-close]').addEventListener('click', () => dlg.close());
+
+  // Clicking the backdrop closes. The dialog element itself is the event target
+  // when the backdrop is hit, so compare against the content box.
+  dlg.addEventListener('click', (e) => {
+    const r = dlg.getBoundingClientRect();
+    const inside =
+      e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+    if (!inside) dlg.close();
+  });
+
+  const copyBtn = dlg.querySelector('[data-copy]');
+  copyBtn.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(area.value);
+    } catch {
+      // Clipboard API needs a secure context; select the text so ⌘C still works.
+      area.select();
+    }
+    copyBtn.textContent = 'Copied ✓';
+    setTimeout(() => (copyBtn.textContent = 'Copy prompt'), 1400);
+  });
 }
 
 /** Renders a dismissable warning when a demo needs a capability the browser lacks. */

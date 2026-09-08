@@ -5,6 +5,7 @@
  */
 
 export const CATEGORIES = {
+  craft: { label: 'Design Craft', hue: 55 },
   css: { label: 'Modern CSS', hue: 265 },
   canvas: { label: 'Canvas 2D', hue: 175 },
   webgl: { label: 'WebGL & Shaders', hue: 25 },
@@ -13,6 +14,107 @@ export const CATEGORIES = {
 };
 
 export const DEMOS = [
+  // --- Design craft -------------------------------------------------------
+  // The unglamorous half. Nothing here is a "wow" effect; together they are
+  // most of the difference between a page that looks designed and one that
+  // looks assembled.
+  {
+    slug: 'type-scale',
+    title: 'Typography System',
+    category: 'craft',
+    blurb:
+      'A fluid modular scale, measure, vertical rhythm, optical sizing and the wrapping rules that make text look set rather than dumped.',
+    tags: ['type', 'clamp()', 'rhythm'],
+  },
+  {
+    slug: 'layout-primitives',
+    title: 'Layout Primitives',
+    category: 'craft',
+    blurb:
+      'Stack, cluster, sidebar, switcher, cover and reel — six intrinsic layouts that respond without a single media query.',
+    tags: ['layout', 'flexbox', 'no media queries'],
+  },
+  {
+    slug: 'elevation',
+    title: 'Shadows, Light & Depth',
+    category: 'craft',
+    blurb:
+      'Why one box-shadow always looks cheap: layered penumbra, a consistent light source, tinted shadows and contact occlusion.',
+    tags: ['shadow', 'depth', 'craft'],
+  },
+  {
+    slug: 'color-harmony',
+    title: 'Palette Construction',
+    category: 'craft',
+    blurb:
+      'Build a full palette from one seed hue: harmony rules, semantic roles, tinted neutrals and a live APCA contrast check.',
+    tags: ['colour', 'palette', 'contrast'],
+  },
+  {
+    slug: 'micro-interactions',
+    title: 'Micro-Interactions',
+    category: 'craft',
+    blurb:
+      'Buttons, toggles, checkboxes and inputs with real state choreography — magnetic pull, ripple, and press physics.',
+    tags: ['ui', 'states', 'feedback'],
+  },
+  {
+    slug: 'noise-texture',
+    title: 'Noise & Texture',
+    category: 'craft',
+    blurb:
+      'Grain overlays, mesh gradients, dithering, halftone and paper fibre — the cheapest way to stop a flat page looking flat.',
+    tags: ['texture', 'grain', 'gradient'],
+  },
+  {
+    slug: 'borders-glow',
+    title: 'Borders & Glow',
+    category: 'craft',
+    blurb:
+      'Gradient borders, rotating conic outlines, spotlight cards, inner rims and the mask trick that makes them all possible.',
+    tags: ['border', 'mask', 'glow'],
+  },
+  {
+    slug: 'image-treatment',
+    title: 'Image Treatment',
+    category: 'craft',
+    blurb:
+      'Duotone, blend modes, clip-path reveals, gradient masks, Ken Burns and the aspect-ratio rules that stop layout shift.',
+    tags: ['image', 'blend', 'clip-path'],
+  },
+  {
+    slug: 'theming',
+    title: 'Theming & Dark Mode',
+    category: 'craft',
+    blurb:
+      'A token architecture that survives contact with a real product, plus a theme switch that animates from the click point.',
+    tags: ['tokens', 'dark mode', 'light-dark()'],
+  },
+  {
+    slug: 'easing-lab',
+    title: 'Easing & Timing',
+    category: 'craft',
+    blurb:
+      'Every curve plotted, played and compared side by side, with the duration and easing rules that make motion feel designed.',
+    tags: ['motion', 'easing', 'timing'],
+  },
+  {
+    slug: 'loading-states',
+    title: 'Loading & Empty States',
+    category: 'craft',
+    blurb:
+      'Skeletons that match their content, progress that never lies, optimistic updates and the timing thresholds behind each.',
+    tags: ['ux', 'skeleton', 'progress'],
+  },
+  {
+    slug: 'cursor-fx',
+    title: 'Cursor & Pointer',
+    category: 'craft',
+    blurb:
+      'Custom cursors, magnetic buttons, trailing followers and blend-mode inversion — with the touch-device fallbacks.',
+    tags: ['cursor', 'pointer', 'hover'],
+  },
+
   // --- Modern CSS ---------------------------------------------------------
   {
     slug: 'scroll-driven',

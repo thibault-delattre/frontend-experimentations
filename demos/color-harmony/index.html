@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Palette Construction — Frontend Experimentations</title>
+    <link rel="stylesheet" href="../../src/styles/base.css" />
+    <style>
+      main { max-width: 1080px; margin: 0 auto; padding: 0 var(--pad) 8rem; }
+      section { margin: 4rem 0; }
+      h2 { font-size: 1.3rem; }
+      .lead { color: var(--fg-dim); max-width: 66ch; }
+      .callout { border-left: 2px solid var(--accent); padding-left: 1rem; color: var(--fg-dim); font-size: 0.9rem; margin: 1.2rem 0; }
+
+      .panel {
+        position: sticky; top: 3.1rem; z-index: 60;
+        display: flex; gap: 1.6rem; flex-wrap: wrap; align-items: center;
+        padding: 0.9rem 1.2rem; margin-bottom: 2rem;
+        border: 1px solid var(--line); border-radius: var(--radius);
+        background: color-mix(in oklch, var(--bg-1) 90%, transparent);
+        backdrop-filter: blur(14px); font-size: 0.8rem; color: var(--fg-dim);
+      }
+      .panel label { display: flex; align-items: center; gap: 0.6rem; }
+      .panel input[type='range'] { accent-color: var(--accent); width: 170px; }
+      .panel output { font-family: var(--font-mono); color: var(--accent-2); min-width: 3.2rem; }
+      .panel button {
+        font: inherit; font-size: 0.78rem; margin-left: auto;
+        background: var(--fg); color: var(--bg-0); border: 0;
+        border-radius: 100px; padding: 0.4rem 0.95rem; cursor: pointer; font-weight: 600;
+      }
+
+      /* --- Harmonies ------------------------------------------------------ */
+      .harmonies { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+      .harmony {
+        border: 1px solid var(--line); border-radius: var(--radius);
+        padding: 1rem; background: var(--bg-1);
+      }
+      .harmony h3 { font-size: 0.9rem; margin: 0 0 0.15rem; }
+      .harmony p { margin: 0 0 0.7rem; font-size: 0.75rem; color: var(--fg-faint); font-family: var(--font-mono); }
+      .harmony__swatches { display: flex; gap: 0.35rem; height: 54px; }
+      .harmony__swatches i { flex: 1; border-radius: 7px; }
+
+      /* --- Ramps ---------------------------------------------------------- */
+      .ramps { display: grid; gap: 1.2rem; }
+      .ramp-row { display: grid; grid-template-columns: 5.5rem 1fr; gap: 0.9rem; align-items: center; }
+      .ramp-row > span { font-family: var(--font-mono); font-size: 0.72rem; color: var(--fg-dim); }
+      .ramp { display: flex; border-radius: 9px; overflow: hidden; height: 46px; }
+      .ramp i {
+        flex: 1; display: grid; place-items: center;
+        font-family: var(--font-mono); font-size: 0.6rem; font-style: normal;
+        cursor: pointer; position: relative;
+      }
+      /* A tiny corner mark on swatches that fall outside sRGB. */
+      .ramp i[data-oog='true']::after {
+        content: ''; position: absolute; top: 3px; right: 3px;
+        width: 5px; height: 5px; border-radius: 50%;
+        background: oklch(75% 0.2 30); box-shadow: 0 0 0 1px oklch(20% 0 0 / 0.5);
+      }
+
+      /* --- Neutrals ------------------------------------------------------- */
+      .neutrals { display: grid; gap: 0.8rem; }
+
+      /* --- Roles + mock UI ------------------------------------------------ */
+      .mock {
+        border: 1px solid var(--role-border); border-radius: var(--radius);
+        background: var(--role-surface); color: var(--role-text);
+        overflow: hidden;
+      }
+      .mock__bar {
+        display: flex; align-items: center; gap: 0.8rem;
+        padding: 0.8rem 1.1rem; background: var(--role-raised);
+        border-bottom: 1px solid var(--role-border);
+      }
+      .mock__dot { width: 22px; height: 22px; border-radius: 7px; background: var(--role-accent); }
+      .mock__bar strong { font-size: 0.88rem; }
+      .mock__bar nav { margin-left: auto; display: flex; gap: 1rem; font-size: 0.8rem; color: var(--role-muted); }
+      .mock__body { padding: 1.2rem; display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+      .mock__card {
+        background: var(--role-raised); border: 1px solid var(--role-border);
+        border-radius: 10px; padding: 1rem;
+      }
+      .mock__card h4 { margin: 0 0 0.25rem; font-size: 0.85rem; }
+      .mock__card p { margin: 0 0 0.8rem; font-size: 0.78rem; color: var(--role-muted); }
+      .mock__actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+      .mock button {
+        font: inherit; font-size: 0.78rem; font-weight: 600; cursor: pointer;
+        border-radius: 8px; padding: 0.4rem 0.85rem; border: 1px solid transparent;
+      }
+      .btn-primary { background: var(--role-accent); color: var(--role-on-accent); }
+      .btn-primary:hover { background: var(--role-accent-hover); }
+      .btn-ghost { background: transparent; color: var(--role-text); border-color: var(--role-border); }
+      .btn-danger { background: var(--role-danger); color: var(--role-on-accent); }
+      .mock__bars { display: flex; gap: 4px; align-items: flex-end; height: 54px; margin-top: 0.6rem; }
+      .mock__bars i { flex: 1; border-radius: 3px 3px 0 0; background: var(--role-accent); }
+
+      /* --- Contrast table -------------------------------------------------- */
+      table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+      th, td { padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--line); text-align: left; }
+      th { color: var(--fg-faint); font-weight: 500; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.07em; }
+      td.n { font-family: var(--font-mono); text-align: right; }
+      .verdict { font-family: var(--font-mono); font-size: 0.72rem; padding: 0.12rem 0.5rem; border-radius: 100px; }
+      .pass { background: oklch(60% 0.16 155 / 0.18); color: oklch(80% 0.15 155); }
+      .warn { background: oklch(70% 0.16 85 / 0.18); color: oklch(84% 0.15 85); }
+      .fail { background: oklch(60% 0.2 25 / 0.18); color: oklch(78% 0.18 25); }
+      .sample { padding: 0.2rem 0.5rem; border-radius: 5px; }
+    </style>
+  </head>
+  <body>
+    <div class="note">
+      <h1>Palette Construction</h1>
+      <p>
+        One seed hue generates an entire product palette. The reason this works
+        in <strong>OKLCH and not in HSL</strong> is that OKLCH lightness is
+        perceptually uniform — equal steps look equally different, and changing
+        hue at fixed lightness does not change apparent brightness.
+      </p>
+    </div>
+
+    <main>
+      <div class="panel">
+        <label>seed hue <input type="range" id="hue" min="0" max="359" value="265" /><output id="hue-out"></output></label>
+        <label>chroma <input type="range" id="chroma" min="2" max="30" value="18" /><output id="chroma-out"></output></label>
+        <label>neutral tint <input type="range" id="tint" min="0" max="6" step="0.25" value="1.5" /><output id="tint-out"></output></label>
+        <button type="button" id="copy">Copy as CSS</button>
+      </div>
+
+      <section>
+        <h2>1 · Harmony</h2>
+        <p class="lead">
+          Every scheme is just arithmetic on the hue angle. Nothing mystical —
+          but keeping lightness and chroma fixed while only the hue moves is
+          what makes the results feel like one family.
+        </p>
+        <div class="harmonies" id="harmonies"></div>
+      </section>
+
+      <section>
+        <h2>2 · The ramp, and why chroma must taper</h2>
+        <p class="lead">
+          Twelve lightness steps. Full chroma at 95% or 10% lightness does not
+          exist in any display gamut — the browser clips it, and the top and
+          bottom of your ramp turn to mud. Tapering chroma toward both ends
+          keeps every step inside the gamut.
+        </p>
+        <div class="ramps" id="ramps"></div>
+        <p class="callout">
+          Dots mark swatches outside sRGB. They will still render on a P3
+          display; on an sRGB one the browser clips them, which is why two
+          adjacent steps can look identical in the untapered row.
+        </p>
+      </section>
+
+      <section>
+        <h2>3 · Neutrals are not grey</h2>
+        <p class="lead">
+          Pure grey next to a saturated brand colour looks dead. Mixing a trace
+          of the seed hue into the neutral ramp — a chroma of 0.004 to 0.02 —
+          makes greys belong to the palette. Push the tint slider from 0.
+        </p>
+        <div class="neutrals" id="neutrals"></div>
+      </section>
+
+      <section>
+        <h2>4 · Roles, not colours</h2>
+        <p class="lead">
+          Components must never reference a ramp step directly. They reference
+          a <em>role</em> — surface, raised, border, text, muted, accent,
+          danger — and the role points at a step. That indirection is what lets
+          you re-theme by changing one number, and it is the entire reason
+          design tokens exist.
+        </p>
+        <div class="mock" id="mock">
+          <div class="mock__bar">
+            <span class="mock__dot"></span>
+            <strong>Acme Analytics</strong>
+            <nav><span>Overview</span><span>Reports</span><span>Settings</span></nav>
+          </div>
+          <div class="mock__body">
+            <div class="mock__card">
+              <h4>Weekly active</h4>
+              <p>Up 12% against the previous period.</p>
+              <div class="mock__bars" id="bars"></div>
+            </div>
+            <div class="mock__card">
+              <h4>Deploy</h4>
+              <p>Three changes are ready to ship to production.</p>
+              <div class="mock__actions">
+                <button class="btn-primary" type="button">Ship it</button>
+                <button class="btn-ghost" type="button">Review</button>
+              </div>
+            </div>
+            <div class="mock__card">
+              <h4>Danger zone</h4>
+              <p>Deleting the workspace cannot be undone.</p>
+              <div class="mock__actions">
+                <button class="btn-danger" type="button">Delete</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>5 · Prove it is readable</h2>
+        <p class="lead">
+          Every text-on-background pair in the mock above, measured live.
+          <strong>APCA Lc</strong> is the primary number: it models perceived
+          contrast far better than the WCAG 2.1 ratio, which systematically
+          overrates light-on-dark. WCAG is shown because it is still what most
+          audits require.
+        </p>
+        <table>
+          <thead>
+            <tr><th>Pair</th><th>Sample</th><th class="n">APCA Lc</th><th class="n">WCAG</th><th>Verdict</th></tr>
+          </thead>
+          <tbody id="contrast"></tbody>
+        </table>
+        <p class="callout">
+          Rules of thumb for APCA: <strong>Lc 90</strong> for small body text,
+          <strong>Lc 75</strong> for larger body, <strong>Lc 60</strong> for
+          headlines, <strong>Lc 45</strong> for large or non-essential text,
+          <strong>Lc 30</strong> is the floor for anything that must be
+          perceived at all — including borders and disabled states.
+        </p>
+      </section>
+    </main>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

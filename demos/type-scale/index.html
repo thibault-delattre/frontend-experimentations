@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Typography System — Frontend Experimentations</title>
+    <link rel="stylesheet" href="../../src/styles/base.css" />
+    <style>
+      /* ═══════════════════════════════════════════════════════════════════
+         A FLUID MODULAR SCALE
+
+         Every size is one formula: clamp(min, preferred, max), where the
+         preferred term is a line in viewport space passing through both
+         endpoints. Solve for slope and intercept once and the type
+         interpolates smoothly between two viewport widths with NO breakpoints
+         and no layout shift at any size in between.
+
+           slope     = (maxSize - minSize) / (maxVw - minVw)
+           intercept = minSize - slope * minVw
+           preferred = intercept + slope * 100vw
+
+         --step-N below are written by main.js as it recomputes the scale.
+         Nothing in this page sets a font-size in pixels.
+         ═══════════════════════════════════════════════════════════════════ */
+
+      main { max-width: 1080px; margin: 0 auto; padding: 0 var(--pad) 8rem; }
+      section { margin: 5rem 0; scroll-margin-top: 5rem; }
+      h2 { font-size: var(--step-2); }
+      h3 { font-size: var(--step-0); color: var(--fg-dim); font-weight: 600; }
+      .lead { color: var(--fg-dim); max-width: 62ch; }
+
+      /* --- Control panel ------------------------------------------------- */
+      .panel {
+        position: sticky; top: 3.1rem; z-index: 50;
+        display: grid; gap: 0.6rem;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        padding: 1rem 1.2rem; margin-bottom: 2rem;
+        border: 1px solid var(--line); border-radius: var(--radius);
+        background: color-mix(in oklch, var(--bg-1) 88%, transparent);
+        backdrop-filter: blur(14px);
+        font-size: 0.78rem;
+      }
+      .panel label { display: grid; grid-template-columns: 1fr auto; gap: 0.3rem 0.6rem; color: var(--fg-dim); }
+      .panel input[type='range'] { grid-column: 1 / -1; accent-color: var(--accent); width: 100%; }
+      .panel output { font-family: var(--font-mono); color: var(--accent-2); }
+      .panel select {
+        font: inherit; font-size: 0.78rem; background: var(--bg-2); color: var(--fg);
+        border: 1px solid var(--line); border-radius: 8px; padding: 0.25rem 0.5rem; grid-column: 1 / -1;
+      }
+
+      /* --- The ladder ----------------------------------------------------- */
+      .ladder { display: grid; gap: 0.4rem; }
+      .rung {
+        display: grid; grid-template-columns: 3.4rem 1fr; gap: 1rem; align-items: baseline;
+        padding: 0.5rem 0; border-bottom: 1px solid var(--line);
+      }
+      .rung__meta {
+        font-family: var(--font-mono); font-size: 0.68rem; color: var(--fg-faint);
+        line-height: 1.4; padding-top: 0.4em;
+      }
+      .rung__meta b { display: block; color: var(--accent-2); font-weight: 500; }
+      .rung__sample {
+        line-height: 1.1; letter-spacing: -0.02em; white-space: nowrap;
+        overflow: hidden; text-overflow: ellipsis;
+      }
+
+      /* --- Measure -------------------------------------------------------- */
+      .measures { display: grid; gap: 1.4rem; }
+      .measure {
+        border-left: 2px solid var(--line); padding-left: 1rem;
+      }
+      .measure p { margin: 0.3rem 0 0; color: var(--fg-dim); font-size: var(--step--1); }
+      .measure[data-ok='true'] { border-left-color: var(--accent-2); }
+      .measure[data-ok='false'] { border-left-color: oklch(60% 0.18 30); }
+      .measure__tag {
+        font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.06em;
+        text-transform: uppercase; color: var(--fg-faint);
+      }
+      .measure[data-ok='true'] .measure__tag { color: var(--accent-2); }
+      .measure[data-ok='false'] .measure__tag { color: oklch(70% 0.18 30); }
+
+      /* --- Rhythm --------------------------------------------------------- */
+      /* A spacing scale derived from line-height, so vertical space is always
+         a multiple of the baseline and blocks stack onto a shared grid. */
+      .rhythm {
+        position: relative; padding: 1.5rem; border: 1px solid var(--line);
+        border-radius: var(--radius); background: var(--bg-1); overflow: hidden;
+      }
+      .rhythm.show-grid::before {
+        content: ''; position: absolute; inset: 0; pointer-events: none;
+        background: repeating-linear-gradient(
+          to bottom,
+          oklch(70% 0.18 190 / 0.28) 0 1px,
+          transparent 1px var(--baseline)
+        );
+      }
+      .rhythm > * { margin: 0; }
+      .rhythm > * + * { margin-block-start: var(--baseline); }
+      .rhythm h4 { font-size: var(--step-1); line-height: calc(var(--baseline) * 2); }
+      .rhythm p { font-size: var(--step-0); line-height: var(--baseline); color: var(--fg-dim); }
+
+      /* --- Wrapping ------------------------------------------------------- */
+      .wrap-compare { display: grid; gap: 1.2rem; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+      .wrap-compare > div { border: 1px solid var(--line); border-radius: var(--radius); padding: 1.2rem; background: var(--bg-1); }
+      .wrap-compare h4 { font-size: var(--step-1); margin: 0 0 0.5rem; max-width: 22ch; }
+      .wrap-compare p { margin: 0; color: var(--fg-dim); font-size: var(--step--1); }
+      .balanced h4 { text-wrap: balance; }
+      .pretty p { text-wrap: pretty; }
+      .unset h4, .unset p { text-wrap: wrap; }
+
+      /* --- Numerals ------------------------------------------------------- */
+      table { width: 100%; border-collapse: collapse; font-size: var(--step--1); }
+      th, td { padding: 0.4rem 0.7rem; border-bottom: 1px solid var(--line); text-align: left; }
+      th { color: var(--fg-faint); font-weight: 500; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; }
+      td.num { text-align: right; }
+      .lining { font-variant-numeric: lining-nums tabular-nums; }
+      .oldstyle { font-variant-numeric: oldstyle-nums proportional-nums; }
+
+      /* --- Before / after -------------------------------------------------- */
+      .ba { display: grid; gap: 1.2rem; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); align-items: start; }
+      .ba > div { border: 1px solid var(--line); border-radius: var(--radius); padding: 1.6rem; background: var(--bg-1); }
+      /* Deliberately unstyled: browser defaults, no scale, no measure limit. */
+      .ba .raw { font-family: serif; }
+      .ba .raw h4 { font-size: 2em; margin: 0.67em 0; font-weight: bold; }
+      .ba .raw p { font-size: 1em; line-height: normal; margin: 1em 0; color: var(--fg); }
+      .ba .set h4 { font-size: var(--step-2); margin: 0 0 0.6rem; text-wrap: balance; letter-spacing: -0.025em; }
+      .ba .set p { font-size: var(--step-0); line-height: 1.65; max-width: 60ch; margin: 0 0 0.9rem; color: var(--fg-dim); text-wrap: pretty; }
+      .ba .set p:last-child { margin-bottom: 0; }
+
+      .callout {
+        border-left: 2px solid var(--accent); padding: 0.2rem 0 0.2rem 1rem;
+        color: var(--fg-dim); font-size: var(--step--1); margin: 1.2rem 0;
+      }
+      code { font-size: 0.88em; }
+    </style>
+  </head>
+  <body>
+    <div class="note">
+      <h1>Typography System</h1>
+      <p>
+        Type on a good page is <strong>engineered, not chosen</strong>. One
+        ratio generates every size; one baseline generates every gap; the
+        measure is a constraint, not an accident. Drag the controls — every
+        specimen below reads from the same custom properties.
+      </p>
+    </div>
+
+    <main>
+      <div class="panel">
+        <label>
+          base size <output id="base-out"></output>
+          <input type="range" id="base" min="14" max="24" step="0.5" value="17" />
+        </label>
+        <label>
+          ratio <output id="ratio-out"></output>
+          <select id="ratio">
+            <option value="1.125">1.125 · major second</option>
+            <option value="1.2" selected>1.200 · minor third</option>
+            <option value="1.25">1.250 · major third</option>
+            <option value="1.333">1.333 · perfect fourth</option>
+            <option value="1.5">1.500 · perfect fifth</option>
+            <option value="1.618">1.618 · golden ratio</option>
+          </select>
+        </label>
+        <label>
+          line height <output id="lh-out"></output>
+          <input type="range" id="lh" min="120" max="190" value="165" />
+        </label>
+        <label>
+          fluid range <output id="vw-out"></output>
+          <input type="range" id="vw" min="0" max="100" value="55" />
+        </label>
+      </div>
+
+      <section>
+        <h2>1 · The scale</h2>
+        <p class="lead">
+          Each step is the previous multiplied by the ratio. A single number
+          decides every size on the page, which is why sizes chosen from a
+          scale look related and sizes chosen by eye do not.
+        </p>
+        <div class="ladder" id="ladder"></div>
+        <p class="callout">
+          The <code>clamp()</code> column is the actual generated CSS. Copy any
+          row. Because the middle term is a viewport-relative line, the size
+          moves continuously — there is no jump at any width.
+        </p>
+      </section>
+
+      <section>
+        <h2>2 · Measure</h2>
+        <p class="lead">
+          Line length is the most under-used typographic control on the web.
+          Below ~45 characters the eye returns too often; above ~75 it loses
+          the line on the way back.
+        </p>
+        <div class="measures" id="measures"></div>
+      </section>
+
+      <section>
+        <h2>3 · Vertical rhythm</h2>
+        <p class="lead">
+          Spacing derived from the baseline rather than picked per element.
+          Every margin here is a multiple of <code>--baseline</code>, so text
+          lands on a shared grid even across headings.
+        </p>
+        <p>
+          <button type="button" id="grid-toggle" aria-pressed="false"
+            style="font: inherit; font-size: 0.8rem; background: var(--bg-2); color: var(--fg);
+                   border: 1px solid var(--line); border-radius: 100px; padding: 0.3rem 0.9rem; cursor: pointer">
+            show baseline grid
+          </button>
+        </p>
+        <div class="rhythm" id="rhythm">
+          <h4>Rhythm is spacing you can predict</h4>
+          <p>
+            This paragraph's line-height is exactly one baseline unit. The
+            heading above occupies two. The gap between every block is one
+            more. Nothing here is a hand-tuned margin.
+          </p>
+          <p>
+            The practical payoff is not mystical alignment — it is that you
+            stop making a decision for every gap, and the page stops having
+            eleven slightly different spacings that nobody chose on purpose.
+          </p>
+        </div>
+      </section>
+
+      <section>
+        <h2>4 · Wrapping</h2>
+        <p class="lead">
+          Two properties that cost nothing and fix the two ugliest defaults:
+          lopsided headings and orphaned last words.
+        </p>
+        <div class="wrap-compare">
+          <div class="unset">
+            <span class="measure__tag">default</span>
+            <h4>A heading long enough to wrap onto several lines</h4>
+            <p>
+              Body copy left to wrap however it lands, which will often strand
+              a single short word alone on the final line of the paragraph.
+            </p>
+          </div>
+          <div class="balanced pretty">
+            <span class="measure__tag">balance + pretty</span>
+            <h4>A heading long enough to wrap onto several lines</h4>
+            <p>
+              Body copy left to wrap however it lands, which will often strand
+              a single short word alone on the final line of the paragraph.
+            </p>
+          </div>
+        </div>
+        <p class="callout">
+          <code>text-wrap: balance</code> evens out line lengths — use it on
+          headings and short blocks only; it is capped at a handful of lines
+          because the algorithm is expensive.
+          <code>text-wrap: pretty</code> is the body-copy one: it prevents
+          orphans and bad rags without equalising lines.
+        </p>
+      </section>
+
+      <section>
+        <h2>5 · Numerals</h2>
+        <p class="lead">
+          Two switches that separate typeset text from default text. Tabular
+          figures share one advance width so columns align; old-style figures
+          have ascenders and descenders and sit better inside running prose.
+        </p>
+        <table>
+          <thead>
+            <tr><th>Region</th><th>Proportional</th><th>Tabular (aligned)</th></tr>
+          </thead>
+          <tbody id="numerals"></tbody>
+        </table>
+        <p class="callout">
+          Old-style in prose: in <span class="oldstyle">1994 the figure was 3,847</span>
+          — versus lining: in <span class="lining">1994 the figure was 3,847</span>.
+          Old-style stops numbers shouting inside a sentence.
+        </p>
+      </section>
+
+      <section>
+        <h2>6 · The payoff</h2>
+        <p class="lead">
+          Identical words. Left is browser defaults; right applies the scale, a
+          measure limit, the rhythm and the wrapping rules. Nothing else.
+        </p>
+        <div class="ba">
+          <div>
+            <span class="measure__tag">browser defaults</span>
+            <div class="raw">
+              <h4>Typography is a system, not a set of choices</h4>
+              <p>
+                The difference between a page that looks designed and one that
+                looks assembled is rarely the typeface. It is whether the sizes
+                relate to each other, whether the line length is controlled,
+                and whether the vertical spacing follows a rule.
+              </p>
+              <p>
+                Every one of those is a constraint you set once, at the top of
+                the stylesheet, and then never think about again.
+              </p>
+            </div>
+          </div>
+          <div>
+            <span class="measure__tag">the system</span>
+            <div class="set">
+              <h4>Typography is a system, not a set of choices</h4>
+              <p>
+                The difference between a page that looks designed and one that
+                looks assembled is rarely the typeface. It is whether the sizes
+                relate to each other, whether the line length is controlled,
+                and whether the vertical spacing follows a rule.
+              </p>
+              <p>
+                Every one of those is a constraint you set once, at the top of
+                the stylesheet, and then never think about again.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

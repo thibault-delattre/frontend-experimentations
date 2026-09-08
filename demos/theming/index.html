@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         THE ANTI-FLASH SCRIPT — inline, synchronous, in <head>, BEFORE any
+         stylesheet. This is the only correct place for it.
+
+         A module script (or anything deferred) runs after first paint, so the
+         user sees a white flash before the dark theme applies. This runs
+         before the parser reaches <body>, so the attribute is already set when
+         the first pixel is painted.
+         ═══════════════════════════════════════════════════════════════════ -->
+    <script>
+      (() => {
+        const stored = localStorage.getItem('theme') || 'system';
+        const dark =
+          stored === 'dark' ||
+          (stored === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.dataset.theme = stored === 'contrast' ? 'contrast' : dark ? 'dark' : 'light';
+        document.documentElement.dataset.pref = stored;
+      })();
+    </script>
+
+    <title>Theming &amp; Dark Mode — Frontend Experimentations</title>
+    <link rel="stylesheet" href="../../src/styles/base.css" />
+    <style>
+      /* ═══ TIER 1 · PRIMITIVES ═══════════════════════════════════════════
+         Raw scale values. Theme-agnostic — "blue-500" means one specific
+         colour, in every theme, forever. Components must NEVER touch these. */
+      :root {
+        --brand-h: 265;
+
+        --blue-50:  oklch(97% 0.02 var(--brand-h));
+        --blue-100: oklch(93% 0.04 var(--brand-h));
+        --blue-200: oklch(86% 0.08 var(--brand-h));
+        --blue-400: oklch(70% 0.16 var(--brand-h));
+        --blue-500: oklch(62% 0.19 var(--brand-h));
+        --blue-600: oklch(54% 0.19 var(--brand-h));
+        --blue-900: oklch(24% 0.08 var(--brand-h));
+
+        --grey-0:   oklch(100% 0 0);
+        --grey-50:  oklch(97.5% 0.003 var(--brand-h));
+        --grey-100: oklch(94% 0.004 var(--brand-h));
+        --grey-200: oklch(88% 0.006 var(--brand-h));
+        --grey-400: oklch(65% 0.008 var(--brand-h));
+        --grey-600: oklch(46% 0.01 var(--brand-h));
+        --grey-800: oklch(24% 0.012 var(--brand-h));
+        --grey-900: oklch(17% 0.014 var(--brand-h));
+        --grey-950: oklch(12% 0.014 var(--brand-h));
+
+        --red-500:  oklch(58% 0.2 25);
+        --green-500: oklch(62% 0.16 155);
+      }
+
+      /* ═══ TIER 2 · SEMANTIC ═════════════════════════════════════════════
+         Role names. These are the ONLY thing components are allowed to use.
+         Flipping a theme means repointing these — nothing else changes. */
+      [data-theme='light'] {
+        --ui-bg: var(--grey-50);
+        --ui-surface: var(--grey-0);
+        --ui-raised: var(--grey-0);
+        --ui-border: var(--grey-200);
+        --ui-text: var(--grey-900);
+        --ui-text-muted: var(--grey-600);
+        --ui-accent: var(--blue-600);
+        --ui-accent-hover: var(--blue-500);
+        --ui-on-accent: var(--grey-0);
+        --ui-danger: var(--red-500);
+        --ui-shadow: 0 1px 2px oklch(20% 0.02 265 / 0.08), 0 8px 20px oklch(20% 0.02 265 / 0.07);
+        --ui-rim: none;
+      }
+
+      [data-theme='dark'] {
+        --ui-bg: var(--grey-950);
+        --ui-surface: var(--grey-900);
+        --ui-raised: var(--grey-800);
+        --ui-border: oklch(30% 0.014 var(--brand-h));
+        --ui-text: var(--grey-50);
+        --ui-text-muted: var(--grey-400);
+        --ui-accent: var(--blue-400);
+        --ui-accent-hover: var(--blue-200);
+        --ui-on-accent: var(--grey-950);
+        --ui-danger: oklch(68% 0.19 25);
+        /* Note the different SHAPE, not just different values: dark elevation
+           is a rim highlight plus a lighter fill, because a shadow has nothing
+           to darken. See the Shadows demo. */
+        --ui-shadow: 0 1px 2px oklch(0% 0 0 / 0.5);
+        --ui-rim: inset 0 1px 0 oklch(100% 0 0 / 0.07);
+      }
+
+      [data-theme='contrast'] {
+        --ui-bg: oklch(0% 0 0);
+        --ui-surface: oklch(0% 0 0);
+        --ui-raised: oklch(12% 0 0);
+        --ui-border: oklch(100% 0 0);
+        --ui-text: oklch(100% 0 0);
+        --ui-text-muted: oklch(88% 0 0);
+        --ui-accent: oklch(88% 0.2 var(--brand-h));
+        --ui-accent-hover: oklch(96% 0.16 var(--brand-h));
+        --ui-on-accent: oklch(0% 0 0);
+        --ui-danger: oklch(75% 0.22 25);
+        --ui-shadow: none;
+        --ui-rim: none;
+      }
+
+      /* colour-scheme makes the UA style form controls, scrollbars and the
+         canvas behind the page correctly. Forgetting it is why a "dark" site
+         still has white scrollbars and blinding date pickers. */
+      [data-theme='light'] { color-scheme: light; }
+      [data-theme='dark'], [data-theme='contrast'] { color-scheme: dark; }
+
+      /* ═══ TIER 3 · COMPONENTS ═══════════════════════════════════════════ */
+      main { max-width: 1080px; margin: 0 auto; padding: 0 var(--pad) 8rem; }
+      section { margin: 3.5rem 0; }
+      h2 { font-size: 1.25rem; }
+      .lead { color: var(--fg-dim); max-width: 66ch; }
+      .callout { border-left: 2px solid var(--accent); padding-left: 1rem; color: var(--fg-dim); font-size: 0.88rem; margin: 1.2rem 0; }
+      pre { overflow-x: auto; background: var(--bg-1); border: 1px solid var(--line); border-radius: var(--radius); padding: 0.9rem 1.1rem; font-size: 0.76rem; }
+
+      /* The themed region. Everything inside consumes ONLY --ui-* tokens. */
+      .app {
+        background: var(--ui-bg); color: var(--ui-text);
+        border: 1px solid var(--ui-border); border-radius: var(--radius);
+        overflow: hidden; transition: background 0.3s, color 0.3s, border-color 0.3s;
+      }
+      .app__bar {
+        display: flex; align-items: center; gap: 0.9rem; padding: 0.9rem 1.2rem;
+        background: var(--ui-surface); border-bottom: 1px solid var(--ui-border);
+        box-shadow: var(--ui-rim);
+      }
+      .app__logo { width: 24px; height: 24px; border-radius: 7px; background: var(--ui-accent); }
+      .app__bar strong { font-size: 0.92rem; }
+      .app__bar nav { margin-left: auto; display: flex; gap: 1.1rem; font-size: 0.82rem; color: var(--ui-text-muted); }
+      .app__body { padding: 1.3rem; display: grid; gap: 1.1rem; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+      .app__card {
+        background: var(--ui-raised); border: 1px solid var(--ui-border);
+        border-radius: 11px; padding: 1.1rem;
+        box-shadow: var(--ui-shadow), var(--ui-rim);
+      }
+      .app__card h4 { margin: 0 0 0.3rem; font-size: 0.88rem; }
+      .app__card p { margin: 0 0 0.9rem; font-size: 0.8rem; color: var(--ui-text-muted); }
+      .app__actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+      .app button {
+        font: inherit; font-size: 0.79rem; font-weight: 600; cursor: pointer;
+        border-radius: 8px; padding: 0.42rem 0.9rem; border: 1px solid transparent;
+        transition: background 0.15s;
+      }
+      .app .primary { background: var(--ui-accent); color: var(--ui-on-accent); }
+      .app .primary:hover { background: var(--ui-accent-hover); }
+      .app .ghost { background: transparent; color: var(--ui-text); border-color: var(--ui-border); }
+      .app .danger { background: var(--ui-danger); color: var(--ui-on-accent); }
+      .app input {
+        font: inherit; font-size: 0.8rem; width: 100%;
+        background: var(--ui-bg); color: var(--ui-text);
+        border: 1px solid var(--ui-border); border-radius: 8px; padding: 0.45rem 0.7rem;
+      }
+      .app table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+      .app th, .app td { text-align: left; padding: 0.4rem 0.6rem; border-bottom: 1px solid var(--ui-border); }
+      .app th { color: var(--ui-text-muted); font-weight: 500; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; }
+      .app .bars { display: flex; gap: 3px; align-items: flex-end; height: 44px; }
+      .app .bars i { flex: 1; background: var(--ui-accent); border-radius: 2px 2px 0 0; }
+
+      /* --- Switcher -------------------------------------------------------- */
+      .switcher { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; margin-bottom: 1.2rem; }
+      .switcher button {
+        font: inherit; font-size: 0.8rem; background: var(--bg-2); color: var(--fg-dim);
+        border: 1px solid var(--line); border-radius: 100px; padding: 0.35rem 0.9rem; cursor: pointer;
+      }
+      .switcher button[aria-pressed='true'] { background: var(--fg); color: var(--bg-0); border-color: var(--fg); }
+      .switcher label { display: flex; align-items: center; gap: 0.6rem; margin-left: auto; font-size: 0.8rem; color: var(--fg-dim); }
+      .switcher input[type='range'] { accent-color: var(--accent); width: 150px; }
+
+      /* --- Tier diagram ---------------------------------------------------- */
+      .tiers { display: grid; gap: 0.8rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+      .tier {
+        border: 1px solid var(--line); border-radius: var(--radius);
+        padding: 1rem; background: var(--bg-1); font-size: 0.82rem;
+      }
+      .tier b { display: block; color: var(--accent-2); font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 0.4rem; }
+      .tier code { display: block; font-size: 0.72rem; margin-top: 0.5rem; background: var(--bg-2); padding: 0.4rem 0.55rem; border-radius: 6px; color: var(--fg-dim); }
+      .tier p { margin: 0; color: var(--fg-dim); }
+
+      /* --- View-transition theme swap --------------------------------------
+         Both snapshots are pinned; the NEW one is revealed by a growing circle
+         clipped from the click point. Because the old frame stays put
+         underneath, this reads as the new theme washing over the page rather
+         than as a cross-fade. */
+      ::view-transition-old(root) { animation: none; }
+      ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+      [data-theme] ::view-transition-new(root) {
+        animation: reveal 0.55s var(--ease-out);
+      }
+      @keyframes reveal {
+        from { clip-path: circle(0% at var(--tx, 50%) var(--ty, 50%)); }
+        to   { clip-path: circle(150% at var(--tx, 50%) var(--ty, 50%)); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        [data-theme] ::view-transition-new(root) { animation: none; }
+      }
+
+      table.contrast { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-top: 1rem; }
+      table.contrast th, table.contrast td { padding: 0.45rem 0.6rem; border-bottom: 1px solid var(--line); text-align: left; }
+      table.contrast th { color: var(--fg-faint); font-weight: 500; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; }
+      table.contrast td.n { font-family: var(--font-mono); text-align: right; }
+      .v { font-family: var(--font-mono); font-size: 0.7rem; padding: 0.1rem 0.5rem; border-radius: 100px; }
+      .v.ok { background: oklch(60% 0.16 155 / 0.18); color: oklch(78% 0.15 155); }
+      .v.no { background: oklch(60% 0.2 25 / 0.18); color: oklch(76% 0.18 25); }
+    </style>
+  </head>
+  <body>
+    <div class="note">
+      <h1>Theming &amp; Dark Mode</h1>
+      <p>
+        A token architecture that survives contact with a real product: three
+        tiers, strict rules about which tier a component may touch, and a theme
+        switch that <strong>animates outward from the click</strong>.
+      </p>
+    </div>
+
+    <main>
+      <section>
+        <div class="switcher" id="switcher">
+          <button type="button" data-theme-btn="light">Light</button>
+          <button type="button" data-theme-btn="dark">Dark</button>
+          <button type="button" data-theme-btn="system">System</button>
+          <button type="button" data-theme-btn="contrast">High contrast</button>
+          <label>brand hue <input type="range" id="hue" min="0" max="359" value="265" /><output id="hue-out"></output></label>
+        </div>
+
+        <div class="app" id="app">
+          <div class="app__bar">
+            <span class="app__logo"></span>
+            <strong>Northwind</strong>
+            <nav><span>Dashboard</span><span>Orders</span><span>Settings</span></nav>
+          </div>
+          <div class="app__body">
+            <div class="app__card">
+              <h4>Revenue</h4>
+              <p>Tracking 8% ahead of forecast this quarter.</p>
+              <div class="bars" id="bars"></div>
+            </div>
+            <div class="app__card">
+              <h4>Invite a teammate</h4>
+              <p>They will get read access to this workspace.</p>
+              <input type="email" placeholder="name@company.com" aria-label="Teammate email" />
+              <div class="app__actions" style="margin-top: .7rem">
+                <button class="primary" type="button">Send invite</button>
+                <button class="ghost" type="button">Cancel</button>
+              </div>
+            </div>
+            <div class="app__card">
+              <h4>Recent</h4>
+              <table>
+                <tr><th>Order</th><th>Status</th></tr>
+                <tr><td>#4821</td><td>Shipped</td></tr>
+                <tr><td>#4820</td><td>Packing</td></tr>
+                <tr><td>#4819</td><td>Refunded</td></tr>
+              </table>
+            </div>
+            <div class="app__card">
+              <h4>Danger zone</h4>
+              <p>Deleting the workspace cannot be undone.</p>
+              <div class="app__actions"><button class="danger" type="button">Delete workspace</button></div>
+            </div>
+          </div>
+        </div>
+
+        <p class="callout">
+          Drag the brand-hue slider. Every surface, border, accent and neutral
+          moves together, in every theme — because the neutrals are tinted from
+          the same <code>--brand-h</code> as the accents. That is the payoff of
+          the indirection, and it is why "re-brand" is a one-line change.
+        </p>
+      </section>
+
+      <section>
+        <h2>The three tiers</h2>
+        <div class="tiers">
+          <div class="tier">
+            <b>1 · Primitives</b>
+            <p>Raw scale values. No meaning attached, identical in every theme.</p>
+            <code>--blue-500: oklch(62% .19 265);<br />--grey-900: oklch(17% .014 265);</code>
+          </div>
+          <div class="tier">
+            <b>2 · Semantic</b>
+            <p>Roles. This is the layer that flips per theme, and the only one components may reference.</p>
+            <code>--ui-surface: var(--grey-0);<br />--ui-accent: var(--blue-600);</code>
+          </div>
+          <div class="tier">
+            <b>3 · Component</b>
+            <p>Consumption. If a component names a primitive, the theme cannot move it.</p>
+            <code>.card { background: var(--ui-surface); }</code>
+          </div>
+        </div>
+        <p class="callout">
+          The one rule that matters: <strong>a component may never reference a
+          primitive.</strong> The moment a card says
+          <code>background: var(--grey-0)</code> it is hardcoded to light mode,
+          and no amount of theming will save it.
+        </p>
+      </section>
+
+      <section>
+        <h2>Dark mode is not an inversion</h2>
+        <p class="lead">
+          Notice that <code>--ui-shadow</code> and <code>--ui-rim</code> change
+          <em>shape</em> between themes, not just value. Light mode gets a soft
+          cast shadow; dark mode gets a one-pixel rim highlight and a much
+          tighter shadow, because on a near-black page a shadow has nothing to
+          darken. Reusing a light-mode elevation scale in dark mode is the most
+          common reason dark themes look flat.
+        </p>
+        <pre><code>[data-theme='light'] {
+  --ui-shadow: 0 1px 2px …/.08, 0 8px 20px …/.07;
+  --ui-rim: none;
+}
+[data-theme='dark'] {
+  --ui-shadow: 0 1px 2px oklch(0% 0 0 / .5);
+  --ui-rim: inset 0 1px 0 oklch(100% 0 0 / .07);   /* ← the lit edge */
+}</code></pre>
+      </section>
+
+      <section>
+        <h2>The flash of wrong theme</h2>
+        <p class="lead">
+          The switcher writes to <code>localStorage</code>, but reading it in a
+          module script is too late — modules are deferred, so they run after
+          first paint and the user sees a flash of the wrong theme. The fix is
+          a small <strong>synchronous inline script in
+          <code>&lt;head&gt;</code></strong>, before any stylesheet.
+        </p>
+        <pre><code>&lt;head&gt;
+  &lt;script&gt;                          &lt;!-- inline, sync, FIRST --&gt;
+    const s = localStorage.getItem('theme') || 'system';
+    const dark = s === 'dark' ||
+      (s === 'system' &amp;&amp; matchMedia('(prefers-color-scheme: dark)').matches);
+    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  &lt;/script&gt;
+  &lt;link rel="stylesheet" …&gt;
+&lt;/head&gt;</code></pre>
+        <p class="callout">
+          Also set <code>color-scheme</code> per theme. Without it the browser
+          keeps styling scrollbars, date pickers and the canvas behind your page
+          for the opposite theme — the classic "dark site, blinding white
+          scrollbar" bug.
+        </p>
+      </section>
+
+      <section>
+        <h2>light-dark(), for the simple cases</h2>
+        <p class="lead">
+          When a value only needs two variants and you are already declaring
+          <code>color-scheme</code>, <code>light-dark()</code> removes the
+          duplicated block entirely. It is not a replacement for semantic
+          tokens — it is a shortcut inside them.
+        </p>
+        <pre><code>:root { color-scheme: light dark; }
+.card {
+  background: light-dark(var(--grey-0), var(--grey-900));
+  color:      light-dark(var(--grey-900), var(--grey-50));
+}</code></pre>
+      </section>
+
+      <section>
+        <h2>Prove every theme is readable</h2>
+        <p class="lead">
+          A theme is not finished until every semantic pair clears contrast in
+          <em>every</em> theme. Measured live from the tokens actually in use:
+        </p>
+        <table class="contrast">
+          <thead><tr><th>Pair</th><th class="n">Contrast</th><th>WCAG AA</th></tr></thead>
+          <tbody id="contrast"></tbody>
+        </table>
+      </section>
+    </main>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
