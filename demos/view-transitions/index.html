@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>View Transitions — Frontend Experimentations</title>
+    <link rel="stylesheet" href="../../src/styles/base.css" />
+    <style>
+      /* ═══════════════════════════════════════════════════════════════════
+         VIEW TRANSITIONS
+
+         document.startViewTransition(cb) screenshots the page, runs `cb` to
+         mutate the DOM, screenshots again, then cross-fades the two.
+
+         Any element carrying a `view-transition-name` is lifted out of that
+         screenshot into its own pair of pseudo-elements:
+
+            ::view-transition-old(name)   the before image
+            ::view-transition-new(name)   the after image
+            ::view-transition-group(name) the box that tweens between them
+
+         Give the *same* name to the small card and the big detail panel and
+         the browser morphs one into the other. That is the whole trick.
+         ═══════════════════════════════════════════════════════════════════ */
+
+      /* Slow every transition down while holding the "slow-mo" toggle. */
+      :root {
+        --vt: 420ms;
+      }
+      body.slow {
+        --vt: 2.2s;
+      }
+
+      ::view-transition-group(*) {
+        animation-duration: var(--vt);
+        animation-timing-function: var(--ease-out);
+      }
+
+      /* The default root cross-fade, customised. */
+      ::view-transition-old(root) {
+        animation: fade-out var(--vt) var(--ease-out) both;
+      }
+      ::view-transition-new(root) {
+        animation: fade-in var(--vt) var(--ease-out) both;
+      }
+      @keyframes fade-out {
+        to {
+          opacity: 0;
+        }
+      }
+      @keyframes fade-in {
+        from {
+          opacity: 0;
+        }
+      }
+
+      /* Morphing images should fill their box at both sizes rather than
+         squash — `object-fit: cover` on the snapshots does that. */
+      ::view-transition-old(hero-img),
+      ::view-transition-new(hero-img) {
+        object-fit: cover;
+        height: 100%;
+      }
+      /* Text that changes size looks better cross-faded than scaled. */
+      ::view-transition-old(hero-title),
+      ::view-transition-new(hero-title) {
+        height: 100%;
+        object-fit: none;
+        object-position: left top;
+      }
+
+      /* --- Page furniture --------------------------------------------- */
+      main {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 0 var(--pad) 6rem;
+      }
+      .toolbar {
+        display: flex;
+        gap: 0.6rem;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-bottom: 1.5rem;
+      }
+      button {
+        font: inherit;
+        font-size: 0.85rem;
+        color: var(--fg);
+        background: var(--bg-2);
+        border: 1px solid var(--line);
+        border-radius: 100px;
+        padding: 0.4rem 0.9rem;
+        cursor: pointer;
+      }
+      button[aria-pressed='true'] {
+        background: var(--fg);
+        color: var(--bg-0);
+      }
+
+      .cards {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+      }
+      .card {
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: var(--bg-1);
+        overflow: hidden;
+        cursor: pointer;
+        text-align: left;
+        padding: 0;
+        display: block;
+      }
+      .card__img {
+        aspect-ratio: 4 / 3;
+        background: var(--swatch);
+      }
+      .card__body {
+        padding: 0.9rem 1rem 1.1rem;
+      }
+      .card h3 {
+        font-size: 1rem;
+        margin: 0 0 0.2rem;
+      }
+      .card p {
+        margin: 0;
+        font-size: 0.82rem;
+        color: var(--fg-faint);
+      }
+
+      /* Detail view — same DOM region, different markup. */
+      .detail {
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: var(--bg-1);
+        overflow: hidden;
+      }
+      .detail__img {
+        height: min(46vh, 340px);
+        background: var(--swatch);
+      }
+      .detail__body {
+        padding: 1.6rem;
+      }
+      .detail h3 {
+        font-size: clamp(1.6rem, 5vw, 2.6rem);
+      }
+
+      /* --- List reorder demo ------------------------------------------ */
+      .list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: grid;
+        gap: 0.5rem;
+      }
+      .list li {
+        display: flex;
+        gap: 0.8rem;
+        align-items: center;
+        padding: 0.7rem 1rem;
+        border: 1px solid var(--line);
+        border-radius: var(--radius-sm);
+        background: var(--bg-1);
+        font-variant-numeric: tabular-nums;
+      }
+      .list .score {
+        margin-left: auto;
+        font-family: var(--font-mono);
+        color: var(--accent-2);
+      }
+
+      section {
+        margin: 4rem 0;
+      }
+      h2 {
+        font-size: 1.4rem;
+      }
+      .lead {
+        color: var(--fg-dim);
+        max-width: 64ch;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        ::view-transition-group(*),
+        ::view-transition-old(*),
+        ::view-transition-new(*) {
+          animation: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="note">
+      <h1>View Transitions</h1>
+      <p>
+        One API call — <code>document.startViewTransition()</code> — and the
+        browser tweens between two DOM states. Elements that share a
+        <strong>view-transition-name</strong> across the two states are morphed
+        into each other; everything else cross-fades.
+      </p>
+    </div>
+
+    <main>
+      <section>
+        <div class="toolbar">
+          <button id="slow" type="button" aria-pressed="false">Slow motion</button>
+          <span style="color: var(--fg-faint); font-size: 0.85rem">
+            Click a card, then click the back button inside the detail.
+          </span>
+        </div>
+        <div id="gallery"></div>
+      </section>
+
+      <section>
+        <h2>Reordering a list</h2>
+        <p class="lead">
+          Give every row a unique name (<code>--vt-name-3</code>, derived from a
+          stable id — never the array index) and the browser FLIPs them for you
+          when the sort changes.
+        </p>
+        <div class="toolbar">
+          <button id="sort-name" type="button">Sort by name</button>
+          <button id="sort-score" type="button">Sort by score</button>
+          <button id="shuffle" type="button">Shuffle</button>
+        </div>
+        <ul class="list" id="list"></ul>
+      </section>
+
+      <section>
+        <h2>Cross-document transitions</h2>
+        <p class="lead">
+          The same effect works between two real navigations in a plain
+          multi-page site. Put this in the CSS of <em>both</em> pages — no
+          JavaScript, no router, no framework:
+        </p>
+        <pre style="overflow-x: auto; background: var(--bg-1); border: 1px solid var(--line); border-radius: var(--radius); padding: 1rem"><code>@view-transition { navigation: auto; }</code></pre>
+        <p class="lead">
+          Then give the shared element the same <code>view-transition-name</code>
+          on both pages. Same-origin only. Listen for
+          <code>pageswap</code> / <code>pagereveal</code> to set names
+          dynamically based on which link was clicked.
+        </p>
+      </section>
+    </main>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

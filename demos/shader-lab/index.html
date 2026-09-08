@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Fragment Shader Lab — Frontend Experimentations</title>
+    <link rel="stylesheet" href="../../src/styles/base.css" />
+    <style>
+      .lab {
+        display: grid;
+        grid-template-columns: 1fr min(46ch, 42vw);
+        min-height: 78vh;
+        border-block: 1px solid var(--line);
+      }
+      @media (max-width: 900px) { .lab { grid-template-columns: 1fr; } }
+
+      /* min-width: 0 on both columns — a grid item's default min-width is
+         `auto`, so the un-wrapping textarea would otherwise force the column
+         wider than its track and blow the layout past the viewport. */
+      .view { position: relative; background: #000; min-width: 0; }
+      canvas { width: 100%; height: 100%; }
+
+      .side {
+        min-width: 0;
+        border-left: 1px solid var(--line);
+        background: var(--bg-1);
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+      .side__tabs { display: flex; gap: 0.3rem; padding: 0.6rem; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+      .side__tabs button {
+        font: inherit; font-size: 0.76rem; background: transparent; color: var(--fg-dim);
+        border: 1px solid var(--line); border-radius: 100px; padding: 0.25rem 0.7rem; cursor: pointer;
+      }
+      .side__tabs button[aria-pressed='true'] { background: var(--fg); color: var(--bg-0); border-color: var(--fg); }
+
+      textarea {
+        flex: 1;
+        min-height: 320px;
+        resize: none;
+        border: 0;
+        background: transparent;
+        color: var(--fg);
+        font-family: var(--font-mono);
+        font-size: 12px;
+        line-height: 1.55;
+        padding: 1rem;
+        tab-size: 2;
+        white-space: pre;
+        overflow: auto;
+      }
+      textarea:focus { outline: none; }
+
+      .err {
+        font-family: var(--font-mono);
+        font-size: 0.72rem;
+        color: oklch(72% 0.2 25);
+        background: oklch(30% 0.1 25 / 0.35);
+        border-top: 1px solid oklch(50% 0.15 25 / 0.4);
+        padding: 0.7rem 1rem;
+        max-height: 9rem;
+        overflow: auto;
+        white-space: pre-wrap;
+      }
+      .err:empty { display: none; }
+
+      .uniforms {
+        border-top: 1px solid var(--line);
+        padding: 0.8rem 1rem;
+        display: grid;
+        gap: 0.45rem;
+        font-size: 0.76rem;
+      }
+      .uniforms label { display: grid; grid-template-columns: 4.5rem 1fr 3rem; gap: 0.5rem; align-items: center; color: var(--fg-dim); }
+      .uniforms input { accent-color: var(--accent); width: 100%; }
+      .uniforms output { font-family: var(--font-mono); color: var(--accent-2); text-align: right; }
+
+      .badge {
+        position: absolute; top: 0.8rem; left: 0.8rem;
+        font-family: var(--font-mono); font-size: 0.7rem; color: var(--fg-faint);
+        background: oklch(0% 0 0 / 0.5); padding: 0.25rem 0.6rem; border-radius: 100px;
+        backdrop-filter: blur(6px);
+      }
+      main { max-width: 900px; margin: 0 auto; padding: 3rem var(--pad) 6rem; }
+      h2 { font-size: 1.25rem; }
+      .lead { color: var(--fg-dim); max-width: 64ch; }
+    </style>
+  </head>
+  <body>
+    <div class="note">
+      <h1>Fragment Shader Lab</h1>
+      <p>
+        A dependency-free WebGL2 harness: one fullscreen triangle, one fragment
+        shader, five uniforms. <strong>Edit the source on the right</strong> —
+        it recompiles as you type and reports errors with line numbers.
+      </p>
+    </div>
+
+    <div class="lab">
+      <div class="view">
+        <canvas id="gl"></canvas>
+        <div class="badge" id="badge">—</div>
+      </div>
+      <div class="side">
+        <div class="side__tabs" id="presets"></div>
+        <textarea id="code" spellcheck="false" aria-label="Fragment shader source"></textarea>
+        <div class="err" id="err"></div>
+        <div class="uniforms">
+          <label>u_scale <input type="range" id="u1" min="1" max="120" value="30" /><output id="u1o"></output></label>
+          <label>u_speed <input type="range" id="u2" min="0" max="200" value="60" /><output id="u2o"></output></label>
+          <label>u_warp <input type="range" id="u3" min="0" max="200" value="70" /><output id="u3o"></output></label>
+          <label>u_detail <input type="range" id="u4" min="1" max="8" value="5" /><output id="u4o"></output></label>
+        </div>
+      </div>
+    </div>
+
+    <main>
+      <h2>The harness</h2>
+      <p class="lead">
+        Everything a fullscreen effect needs, in about sixty lines of
+        <code>main.js</code>:
+      </p>
+      <ul class="lead">
+        <li>
+          <strong>One triangle, not a quad.</strong> A single oversized triangle
+          covers the viewport with no diagonal seam and no index buffer — and it
+          needs no vertex attributes at all, since
+          <code>gl_VertexID</code> can generate the positions.
+        </li>
+        <li>
+          <strong>Uniforms:</strong> <code>u_resolution</code>,
+          <code>u_time</code>, <code>u_mouse</code> and four scalars wired to the
+          sliders. That set covers the overwhelming majority of shader toys.
+        </li>
+        <li>
+          <strong>Hot reload:</strong> recompile on input, keep the old program
+          if the new one fails, and print the driver's error log verbatim.
+        </li>
+      </ul>
+
+      <h2>The techniques in the presets</h2>
+      <ul class="lead">
+        <li>
+          <strong>Value noise → fbm.</strong> Sum several octaves of noise at
+          doubling frequency and halving amplitude. This is the base of every
+          cloud, terrain and marble shader ever written.
+        </li>
+        <li>
+          <strong>Domain warping.</strong> Feed fbm's output back in as its own
+          input coordinate: <code>fbm(p + fbm(p + fbm(p)))</code>. Turns
+          featureless noise into flowing, organic structure. Iñigo Quílez's
+          single most reused idea.
+        </li>
+        <li>
+          <strong>Signed distance fields.</strong> Describe a shape by the
+          distance to its surface, then shade by that distance. Gives you
+          resolution-independent shapes with free antialiasing, outlines and
+          smooth unions.
+        </li>
+        <li>
+          <strong>Raymarching.</strong> March along the view ray in steps of the
+          SDF's value until you hit something. Full 3D from a fragment shader
+          with no geometry at all.
+        </li>
+      </ul>
+
+      <h2>Reusing this</h2>
+      <p class="lead">
+        Copy <code>main.js</code>. Replace the preset with your own fragment
+        source and delete the textarea — you are left with a self-contained
+        fullscreen shader background that ships zero dependencies and costs one
+        draw call per frame.
+      </p>
+    </main>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Glass &amp; Dispersion — Frontend Experimentations</title>
+    <link rel="stylesheet" href="../../src/styles/base.css" />
+    <style>
+      .stage { position: relative; height: 82vh; min-height: 500px; border-block: 1px solid var(--line); }
+      canvas { width: 100%; height: 100%; }
+      .hud {
+        position: absolute; left: var(--pad); top: var(--pad);
+        display: grid; gap: 0.45rem; padding: 0.9rem 1rem;
+        border-radius: var(--radius); border: 1px solid var(--line);
+        background: color-mix(in oklch, var(--bg-1) 82%, transparent);
+        backdrop-filter: blur(12px); font-size: 0.78rem; width: 270px;
+      }
+      .hud label { display: grid; grid-template-columns: 5.4rem 1fr 2.8rem; gap: 0.5rem; align-items: center; color: var(--fg-dim); }
+      .hud input[type='range'] { width: 100%; accent-color: var(--accent); }
+      .hud output { font-family: var(--font-mono); color: var(--accent-2); text-align: right; }
+      .chips { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+      .chips button {
+        font: inherit; font-size: 0.75rem; background: var(--bg-2); color: var(--fg-dim);
+        border: 1px solid var(--line); border-radius: 100px; padding: 0.25rem 0.7rem; cursor: pointer;
+      }
+      .chips button[aria-pressed='true'] { background: var(--fg); color: var(--bg-0); border-color: var(--fg); }
+      main { max-width: 900px; margin: 0 auto; padding: 3rem var(--pad) 6rem; }
+      h2 { font-size: 1.25rem; }
+      .lead { color: var(--fg-dim); max-width: 66ch; }
+      table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin: 1rem 0; }
+      td, th { text-align: left; padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+      th { color: var(--fg-faint); font-weight: 500; font-family: var(--font-mono); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; }
+      td:first-child { font-family: var(--font-mono); color: var(--accent-2); white-space: nowrap; }
+      pre { overflow-x: auto; background: var(--bg-1); border: 1px solid var(--line); border-radius: var(--radius); padding: 1rem; font-size: 0.8rem; }
+    </style>
+  </head>
+  <body>
+    <div class="note">
+      <h1>Glass &amp; Dispersion</h1>
+      <p>
+        Physically-based transmission: light passes <em>through</em> the mesh,
+        bends by the index of refraction, scatters with roughness, and splits
+        into colour by wavelength. <strong>Drag to orbit.</strong>
+      </p>
+    </div>
+
+    <div class="stage">
+      <canvas id="c"></canvas>
+      <div class="hud">
+        <div class="chips" id="shapes"></div>
+        <label>ior <input type="range" id="ior" min="100" max="250" value="152" /><output id="ior-out"></output></label>
+        <label>thickness <input type="range" id="thick" min="0" max="500" value="150" /><output id="thick-out"></output></label>
+        <label>roughness <input type="range" id="rough" min="0" max="100" value="4" /><output id="rough-out"></output></label>
+        <label>dispersion <input type="range" id="disp" min="0" max="200" value="45" /><output id="disp-out"></output></label>
+        <label>iridescence <input type="range" id="irid" min="0" max="100" value="20" /><output id="irid-out"></output></label>
+        <label>tint <input type="range" id="tint" min="0" max="360" value="205" /><output id="tint-out"></output></label>
+        <div class="chips">
+          <button type="button" id="preset-glass" aria-pressed="true">clear glass</button>
+          <button type="button" id="preset-diamond">diamond</button>
+          <button type="button" id="preset-water">frosted</button>
+        </div>
+      </div>
+    </div>
+
+    <main>
+      <h2>The parameters, and what each one physically means</h2>
+      <table>
+        <tr><th>property</th><th>meaning</th></tr>
+        <tr>
+          <td>transmission</td>
+          <td>fraction of light that passes through rather than reflecting. 1 = fully see-through. This is <em>not</em> opacity: transmitted light still refracts and tints.</td>
+        </tr>
+        <tr>
+          <td>ior</td>
+          <td>index of refraction — how sharply light bends. Air 1.0, water 1.33, glass 1.5, sapphire 1.77, diamond 2.42.</td>
+        </tr>
+        <tr>
+          <td>thickness</td>
+          <td>how far light travels inside the volume. Drives both the amount of bending and how strongly <code>attenuationColor</code> accumulates.</td>
+        </tr>
+        <tr>
+          <td>attenuationColor<br />attenuationDistance</td>
+          <td>Beer–Lambert absorption. The colour that survives after light has travelled that distance through the material — this is why thick glass looks green at the edges.</td>
+        </tr>
+        <tr>
+          <td>roughness</td>
+          <td>scatters the transmitted ray. Above ~0.1 it becomes frosted glass; the renderer blurs the transmission buffer to fake it.</td>
+        </tr>
+        <tr>
+          <td>dispersion</td>
+          <td>the IOR differs per wavelength, so red, green and blue refract by different amounts. This is the rainbow in a prism.</td>
+        </tr>
+        <tr>
+          <td>iridescence<br />iridescenceThicknessRange</td>
+          <td>thin-film interference — the oil-slick and soap-bubble colours, produced by a film only a few hundred nanometres thick.</td>
+        </tr>
+      </table>
+
+      <h2>The cost</h2>
+      <p class="lead">
+        Transmission is not free. The renderer draws the opaque scene into an
+        offscreen buffer first so the glass has something to refract, then draws
+        the glass sampling that buffer. That is two passes, plus a mip chain for
+        roughness. Practical consequences:
+      </p>
+      <ul class="lead">
+        <li>
+          Transmissive objects <strong>cannot refract each other</strong> — they
+          are excluded from the buffer they read. Overlapping glass will look
+          wrong; it is the single most common bug with this material.
+        </li>
+        <li>
+          <code>dispersion</code> costs three transmission samples instead of
+          one. Turn it off on mobile.
+        </li>
+        <li>
+          You need an <strong>environment map</strong>. Transmission and
+          reflection both sample it; without one, glass renders black.
+        </li>
+      </ul>
+
+      <pre><code>const glass = new THREE.MeshPhysicalNodeMaterial({
+  transmission: 1,
+  ior: 1.52,
+  thickness: 1.5,
+  roughness: 0.04,
+  dispersion: 0.45,
+  iridescence: 0.2,
+  iridescenceIOR: 1.3,
+  attenuationColor: new THREE.Color(0x88ccff),
+  attenuationDistance: 2.5,
+  metalness: 0,
+  clearcoat: 1,
+});
+scene.environment = pmrem.fromScene(new RoomEnvironment()).texture;</code></pre>
+
+      <h2>When to fake it instead</h2>
+      <p class="lead">
+        For a UI panel over a page, the CSS approach in
+        <a href="../liquid-glass/index.html">Liquid Glass</a> is orders of
+        magnitude cheaper and needs no renderer at all. Reach for physical
+        transmission when the glass is an object in a 3D scene, with real
+        geometry and real depth behind it.
+      </p>
+    </main>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

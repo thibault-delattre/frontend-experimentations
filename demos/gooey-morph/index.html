@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Gooey Morphing — Frontend Experimentations</title>
+    <link rel="stylesheet" href="../../src/styles/base.css" />
+    <style>
+      /* ═══════════════════════════════════════════════════════════════════
+         SVG FILTERS OVER LIVE DOM
+
+         `filter: url(#id)` runs a filter graph over rendered DOM, not just
+         over SVG. Five primitives cover almost every effect worth having:
+
+           feGaussianBlur     soften
+           feColorMatrix      remap channels (the alpha ramp = metaballs)
+           feTurbulence       procedural noise
+           feDisplacementMap  offset pixels by another image's channels
+           feComposite/Blend  combine layers
+
+         Everything below is those five, arranged differently.
+         ═══════════════════════════════════════════════════════════════════ */
+
+      /* 1 ── METABALLS ────────────────────────────────────────────────── */
+      .goo-stage {
+        filter: url(#goo);
+        position: relative;
+        height: 300px;
+        border-radius: var(--radius);
+        border: 1px solid var(--line);
+        background: var(--bg-1);
+        overflow: hidden;
+      }
+      .ball {
+        position: absolute;
+        border-radius: 50%;
+        translate: -50% -50%;
+        background: var(--accent);
+        will-change: transform;
+      }
+      .ball--cursor { background: var(--accent-3); }
+
+      /* 2 ── GOOEY MENU ───────────────────────────────────────────────── */
+      .fab {
+        position: relative;
+        width: 100%;
+        height: 220px;
+        display: grid;
+        place-items: center;
+        filter: url(#goo);
+      }
+      .fab__btn,
+      .fab__item {
+        position: absolute;
+        width: 58px;
+        height: 58px;
+        border-radius: 50%;
+        border: 0;
+        display: grid;
+        place-items: center;
+        background: var(--accent);
+        color: white;
+        font: inherit;
+        font-size: 1.1rem;
+        cursor: pointer;
+        transition: translate 0.5s var(--ease-out), scale 0.4s var(--ease-out);
+      }
+      .fab__btn { z-index: 2; }
+      .fab__item { scale: 0.55; }
+      /* :has() — the parent selector. Open state lives on the button's own
+         :focus-within / hover, no class toggling in JS. */
+      .fab:hover .fab__item,
+      .fab:focus-within .fab__item {
+        scale: 1;
+      }
+      .fab:hover .fab__item:nth-of-type(1),
+      .fab:focus-within .fab__item:nth-of-type(1) { translate: -140px 0; }
+      .fab:hover .fab__item:nth-of-type(2),
+      .fab:focus-within .fab__item:nth-of-type(2) { translate: -70px -62px; }
+      .fab:hover .fab__item:nth-of-type(3),
+      .fab:focus-within .fab__item:nth-of-type(3) { translate: 70px -62px; }
+      .fab:hover .fab__item:nth-of-type(4),
+      .fab:focus-within .fab__item:nth-of-type(4) { translate: 140px 0; }
+
+      /* 3 ── BLOB: animating border-radius' eight values ───────────────── */
+      .blob {
+        width: min(60vw, 300px);
+        aspect-ratio: 1;
+        margin: 0 auto;
+        background: conic-gradient(from 40deg, var(--accent), var(--accent-2), var(--accent-3), var(--accent));
+        animation: morph 9s var(--ease-io) infinite;
+      }
+      @keyframes morph {
+        0%,
+        100% { border-radius: 60% 40% 55% 45% / 45% 55% 45% 55%; rotate: 0deg; }
+        33%  { border-radius: 35% 65% 40% 60% / 62% 38% 62% 38%; rotate: 120deg; }
+        66%  { border-radius: 55% 45% 68% 32% / 35% 62% 38% 65%; rotate: 240deg; }
+      }
+
+      /* 4 ── DISPLACED TEXT ────────────────────────────────────────────
+         feTurbulence + feDisplacementMap over a headline. Animating the
+         turbulence's baseFrequency (done in main.js via SMIL-free JS) gives
+         liquid text; leaving it static gives an etched, rough edge. */
+      .warped {
+        font-size: clamp(2.5rem, 12vw, 8rem);
+        font-weight: 900;
+        letter-spacing: -0.05em;
+        text-align: center;
+        margin: 0;
+        filter: url(#warp);
+        background: linear-gradient(100deg, var(--accent), var(--accent-2));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+
+      /* 5 ── GRAIN OVERLAY ─────────────────────────────────────────────
+         Fractal noise at high frequency, screened over the page. The single
+         cheapest way to stop large flat gradients from banding. */
+      .grainy {
+        position: relative;
+        height: 220px;
+        border-radius: var(--radius);
+        overflow: hidden;
+        background: linear-gradient(160deg in oklab, oklch(45% 0.22 300), oklch(70% 0.18 200));
+        display: grid;
+        place-items: center;
+        font-weight: 700;
+        font-size: 1.4rem;
+      }
+      .grainy::after {
+        content: '';
+        position: absolute;
+        inset: -50%;
+        filter: url(#grain);
+        opacity: 0.32;
+        mix-blend-mode: overlay;
+        pointer-events: none;
+      }
+
+      main { max-width: 900px; margin: 0 auto; padding: 0 var(--pad) 6rem; }
+      section { margin: 3.5rem 0; }
+      h2 { font-size: 1.25rem; }
+      .lead { color: var(--fg-dim); max-width: 64ch; }
+    </style>
+  </head>
+  <body>
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <!-- THE METABALL FILTER.
+           stdDeviation controls how far apart shapes can be and still merge.
+           The alpha row `0 0 0 26 -12` is a steep ramp: multiply alpha by 26,
+           subtract 12. Values below ~0.46 go transparent, above go opaque —
+           so blurred edges snap back to a hard outline, and two overlapping
+           blurs sum past the threshold and become one shape. -->
+      <!-- stdDeviation sets the *reach*: two shapes merge when the gap between
+           them is under roughly 2× this value. Too small and nothing fuses;
+           too large and everything becomes one puddle. -->
+      <filter id="goo">
+        <feGaussianBlur in="SourceGraphic" stdDeviation="18" result="blur" />
+        <feColorMatrix
+          in="blur"
+          mode="matrix"
+          values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 26 -12"
+          result="goo"
+        />
+        <feComposite in="SourceGraphic" in2="goo" operator="atop" />
+      </filter>
+
+      <filter id="warp">
+        <feTurbulence
+          id="warp-noise"
+          type="fractalNoise"
+          baseFrequency="0.012 0.03"
+          numOctaves="2"
+          seed="3"
+          result="n"
+        />
+        <feDisplacementMap in="SourceGraphic" in2="n" scale="18" xChannelSelector="R" yChannelSelector="G" />
+      </filter>
+
+      <filter id="grain">
+        <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch" />
+        <!-- Desaturate the noise to monochrome grain. -->
+        <feColorMatrix type="saturate" values="0" />
+      </filter>
+    </svg>
+
+    <div class="note">
+      <h1>Gooey Morphing</h1>
+      <p>
+        The blur-plus-alpha-ramp trick that makes separate shapes melt into one
+        another, applied to live DOM. <strong>Move the pointer</strong> over the
+        first panel — the cursor is a metaball.
+      </p>
+    </div>
+
+    <main>
+      <section>
+        <h2>1 · Metaballs over DOM elements</h2>
+        <div class="goo-stage" id="stage"></div>
+        <p class="lead" style="margin-top: 1rem">
+          These are ordinary <code>&lt;div&gt;</code>s with
+          <code>border-radius: 50%</code>. The parent's
+          <code>filter: url(#goo)</code> is doing all of it. Read the alpha row
+          of the <code>feColorMatrix</code> in the source — that is the effect.
+        </p>
+      </section>
+
+      <section>
+        <h2>2 · Gooey menu</h2>
+        <p class="lead">
+          Hover or tab into the button. Items separate from the trunk like
+          liquid. Open state is <code>:hover</code>/<code>:focus-within</code>,
+          so it is keyboard-accessible with no JavaScript.
+        </p>
+        <div class="fab">
+          <button class="fab__item" type="button" aria-label="Share">↗</button>
+          <button class="fab__item" type="button" aria-label="Like">♥</button>
+          <button class="fab__item" type="button" aria-label="Save">★</button>
+          <button class="fab__item" type="button" aria-label="More">⋯</button>
+          <button class="fab__btn" type="button" aria-label="Open menu">+</button>
+        </div>
+      </section>
+
+      <section>
+        <h2>3 · Organic blob</h2>
+        <p class="lead">
+          No filter at all here — just the eight-value form of
+          <code>border-radius</code> (four horizontal radii, a slash, four
+          vertical) animated between three states. Cheaper than any SVG path
+          morph and it composites.
+        </p>
+        <div class="blob"></div>
+      </section>
+
+      <section>
+        <h2>4 · Displaced text</h2>
+        <div class="warped">LIQUID</div>
+        <p class="lead" style="margin-top: 1rem">
+          <code>feTurbulence</code> generates a noise field;
+          <code>feDisplacementMap</code> uses its red and green channels as
+          per-pixel x/y offsets. Animating <code>baseFrequency</code> makes it
+          flow — but it re-runs the filter graph every frame, so it is driven
+          only on hover here.
+        </p>
+      </section>
+
+      <section>
+        <h2>5 · Film grain</h2>
+        <p class="lead">
+          High-frequency fractal noise, desaturated and blended
+          <code>overlay</code>. Kills gradient banding on large fills for the
+          cost of one composited pseudo-element.
+        </p>
+        <div class="grainy">grain over gradient</div>
+      </section>
+
+      <section>
+        <h2>Performance</h2>
+        <ul class="lead">
+          <li>
+            SVG filters are <strong>not</strong> GPU-composited in most engines.
+            Filter a small container, never <code>body</code>.
+          </li>
+          <li>
+            Keep the filtered subtree shallow — the whole thing is rasterised
+            into one buffer, then filtered, on every frame it changes.
+          </li>
+          <li>
+            Text inside a <code>url(#goo)</code> subtree renders through the
+            threshold too and turns to mush. Put labels outside the filtered
+            element, or on a sibling layer above it.
+          </li>
+        </ul>
+      </section>
+    </main>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

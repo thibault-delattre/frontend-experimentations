@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Post-Processing Stack — Frontend Experimentations</title>
+    <link rel="stylesheet" href="../../src/styles/base.css" />
+    <style>
+      .stage { position: relative; height: 82vh; min-height: 500px; border-block: 1px solid var(--line); }
+      canvas { width: 100%; height: 100%; }
+      .hud {
+        position: absolute; left: var(--pad); top: var(--pad);
+        display: grid; gap: 0.4rem; padding: 0.9rem 1rem;
+        border-radius: var(--radius); border: 1px solid var(--line);
+        background: color-mix(in oklch, var(--bg-1) 82%, transparent);
+        backdrop-filter: blur(12px); font-size: 0.78rem; width: 280px;
+        max-height: calc(82vh - var(--pad) * 2); overflow: auto;
+      }
+      .hud label { display: grid; grid-template-columns: 5.8rem 1fr 2.6rem; gap: 0.5rem; align-items: center; color: var(--fg-dim); }
+      .hud input[type='range'] { width: 100%; accent-color: var(--accent); }
+      .hud output { font-family: var(--font-mono); color: var(--accent-2); text-align: right; }
+      .hud hr { border: 0; border-top: 1px solid var(--line); margin: 0.3rem 0; }
+      .toggle { display: flex; justify-content: space-between; align-items: center; color: var(--fg); font-weight: 500; }
+      .toggle input { accent-color: var(--accent); }
+      .chips { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+      .chips button {
+        font: inherit; font-size: 0.75rem; background: var(--bg-2); color: var(--fg-dim);
+        border: 1px solid var(--line); border-radius: 100px; padding: 0.25rem 0.7rem; cursor: pointer;
+      }
+      .chips button[aria-pressed='true'] { background: var(--fg); color: var(--bg-0); border-color: var(--fg); }
+      main { max-width: 900px; margin: 0 auto; padding: 3rem var(--pad) 6rem; }
+      h2 { font-size: 1.25rem; }
+      .lead { color: var(--fg-dim); max-width: 66ch; }
+      pre { overflow-x: auto; background: var(--bg-1); border: 1px solid var(--line); border-radius: var(--radius); padding: 1rem; font-size: 0.8rem; }
+    </style>
+  </head>
+  <body>
+    <div class="note">
+      <h1>Post-Processing Stack</h1>
+      <p>
+        Bloom, chromatic aberration, film grain, vignette and colour grading
+        composed as <strong>TSL nodes on a single output node</strong> — not as a
+        chain of framebuffer passes. Toggle each one to see what it contributes.
+      </p>
+    </div>
+
+    <div class="stage">
+      <canvas id="c"></canvas>
+      <div class="hud">
+        <div class="chips" id="scenes"></div>
+        <hr />
+        <label class="toggle">bloom <input type="checkbox" id="t-bloom" checked /></label>
+        <label>strength <input type="range" id="b-str" min="0" max="300" value="55" /><output id="b-str-out"></output></label>
+        <label>radius <input type="range" id="b-rad" min="0" max="150" value="60" /><output id="b-rad-out"></output></label>
+        <label>threshold <input type="range" id="b-thr" min="0" max="150" value="88" /><output id="b-thr-out"></output></label>
+        <hr />
+        <label class="toggle">chromatic <input type="checkbox" id="t-ca" checked /></label>
+        <label>amount <input type="range" id="ca" min="0" max="200" value="40" /><output id="ca-out"></output></label>
+        <hr />
+        <label class="toggle">grain <input type="checkbox" id="t-grain" checked /></label>
+        <label>intensity <input type="range" id="grain" min="0" max="100" value="12" /><output id="grain-out"></output></label>
+        <hr />
+        <label class="toggle">vignette <input type="checkbox" id="t-vig" checked /></label>
+        <label>amount <input type="range" id="vig" min="0" max="150" value="55" /><output id="vig-out"></output></label>
+        <hr />
+        <label class="toggle">grade <input type="checkbox" id="t-grade" checked /></label>
+        <label>saturation <input type="range" id="sat" min="0" max="250" value="115" /><output id="sat-out"></output></label>
+        <label>contrast <input type="range" id="con" min="50" max="200" value="108" /><output id="con-out"></output></label>
+      </div>
+    </div>
+
+    <main>
+      <h2>The node approach</h2>
+      <p class="lead">
+        The old <code>EffectComposer</code> ran one full-screen pass per effect,
+        each with its own render target. TSL post-processing instead builds a
+        single expression tree and lets the compiler fuse it — most of the stack
+        below collapses into one fragment shader.
+      </p>
+      <pre><code>import { RenderPipeline } from 'three/webgpu';
+import { pass, uniform, vec3, vec4, screenUV, mix, smoothstep } from 'three/tsl';
+import { bloom } from 'three/addons/tsl/display/BloomNode.js';
+
+const post = new RenderPipeline(renderer);
+
+const scenePass = pass(scene, camera);      // the rendered scene, as a node
+const colour    = scenePass.getTextureNode();
+
+// bloom() is itself a node: it takes a node in and returns a node out.
+const glow = bloom(colour, strength, radius, threshold);
+
+// Everything downstream is ordinary TSL arithmetic on colour.
+let out = colour.add(glow);
+out = out.mul(vignette).mul(grain);
+
+post.outputNode = out;
+post.render();                               // replaces renderer.render()</code></pre>
+
+      <h2>What each effect is doing</h2>
+      <ul class="lead">
+        <li>
+          <strong>Bloom</strong> — threshold the image to keep only what is
+          brighter than 1.0, downsample it through a mip chain, blur each level,
+          then add them back. That is why bloom needs HDR: with values clamped to
+          1.0 there is nothing above the threshold to bloom, and you get a
+          uniform haze instead of light.
+        </li>
+        <li>
+          <strong>Chromatic aberration</strong> — sample R, G and B at slightly
+          different radial offsets from the centre. Real lenses do this at the
+          edges, which is why it reads as "photographed" and not as "broken".
+          Keep it under about 0.005 of screen width.
+        </li>
+        <li>
+          <strong>Grain</strong> — animated hash noise. Its real job is to break
+          up banding in gradients and to hide the compression artefacts in dark
+          areas, not to look retro.
+        </li>
+        <li>
+          <strong>Vignette</strong> — a radial darkening. The cheapest possible
+          way to draw the eye toward the centre of frame.
+        </li>
+        <li>
+          <strong>Grade</strong> — saturation is a lerp between the image and its
+          luminance; contrast is a scale about 0.5. Both are two lines and belong
+          at the end of the chain, after tone mapping.
+        </li>
+      </ul>
+
+      <h2>Order matters</h2>
+      <p class="lead">
+        Bloom must happen in <strong>linear HDR</strong>, before tone mapping.
+        Grain and vignette must happen <strong>after</strong>, in display space —
+        grain applied before tone mapping gets crushed by it, and a vignette
+        applied before will shift hue as it darkens. Getting this wrong is the
+        usual reason a stack "looks muddy".
+      </p>
+
+      <h2>Cost</h2>
+      <p class="lead">
+        Bloom's mip chain is the expensive part — roughly six extra passes at
+        decreasing resolution. On mobile, halve the resolution of the bloom
+        input, or drop bloom and keep only the cheap screen-space effects, which
+        together cost less than one full-screen pass.
+      </p>
+    </main>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

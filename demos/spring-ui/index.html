@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Springs &amp; Layout — Frontend Experimentations</title>
+    <link rel="stylesheet" href="../../src/styles/base.css" />
+    <style>
+      main { max-width: 1000px; margin: 0 auto; padding: 0 var(--pad) 8rem; }
+      section { margin: 4rem 0; }
+      h2 { font-size: 1.25rem; }
+      .label { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-faint); margin-bottom: 0.8rem; }
+      .lead { color: var(--fg-dim); max-width: 64ch; }
+      .panel { border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg-1); padding: 1.6rem; }
+
+      /* 1 · spring playground */
+      .track { position: relative; height: 76px; border-radius: 100px; background: var(--bg-2); margin: 0.6rem 0; overflow: hidden; }
+      .ball { position: absolute; top: 50%; left: 8px; width: 60px; height: 60px; border-radius: 50%; translate: 0 -50%; background: var(--accent); }
+      .ball.ease { background: var(--fg-faint); }
+      .rowlabel { font-size: 0.78rem; color: var(--fg-dim); display: flex; justify-content: space-between; }
+      .knobs { display: grid; gap: 0.5rem; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); margin-top: 1.2rem; }
+      .knobs label { display: grid; grid-template-columns: 5.5rem 1fr 3rem; gap: 0.5rem; align-items: center; font-size: 0.8rem; color: var(--fg-dim); }
+      .knobs input { accent-color: var(--accent); width: 100%; }
+      .knobs output { font-family: var(--font-mono); color: var(--accent-2); text-align: right; }
+      button.go { font: inherit; font-size: 0.85rem; background: var(--fg); color: var(--bg-0); border: 0; border-radius: 100px; padding: 0.45rem 1.1rem; cursor: pointer; margin-top: 1rem; }
+
+      /* 2 · drag */
+      .arena { position: relative; height: 320px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg-1); overflow: hidden; }
+      .puck {
+        position: absolute; left: 50%; top: 50%; width: 96px; height: 96px; margin: -48px 0 0 -48px;
+        border-radius: 26px; display: grid; place-items: center; cursor: grab; touch-action: none;
+        background: linear-gradient(150deg, var(--accent), var(--accent-3));
+        font-size: 0.78rem; font-weight: 600; color: white; user-select: none;
+      }
+      .puck:active { cursor: grabbing; }
+
+      /* 3 · shared layout */
+      .tiles { display: grid; gap: 0.8rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr)); }
+      .tile {
+        aspect-ratio: 1; border-radius: var(--radius); cursor: pointer;
+        background: linear-gradient(150deg, oklch(60% 0.2 var(--h)), oklch(35% 0.16 calc(var(--h) + 50)));
+        display: grid; place-items: end; padding: 0.8rem; font-weight: 600; font-size: 0.85rem; color: white;
+      }
+      .expanded {
+        position: fixed; z-index: 200; border-radius: var(--radius); cursor: zoom-out;
+        display: grid; place-items: center; font-size: 2rem; font-weight: 700; color: white;
+      }
+      .scrim { position: fixed; inset: 0; z-index: 199; background: oklch(0% 0 0 / 0.6); backdrop-filter: blur(6px); opacity: 0; }
+
+      /* 4 · gestures */
+      .gest { display: flex; gap: 0.8rem; flex-wrap: wrap; }
+      .gest > div {
+        padding: 1rem 1.4rem; border: 1px solid var(--line); border-radius: var(--radius);
+        background: var(--bg-2); cursor: pointer; user-select: none; font-size: 0.9rem;
+      }
+
+      /* 5 · stagger list */
+      .stag { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
+      .stag li { padding: 0.75rem 1rem; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--bg-1); font-size: 0.9rem; }
+    </style>
+  </head>
+  <body>
+    <div class="note">
+      <h1>Springs &amp; Layout</h1>
+      <p>
+        <strong>Motion</strong> (formerly Framer Motion) for physics-based
+        animation. A spring has no duration — it has stiffness, damping and mass,
+        and it settles when the physics say so. That is why an interrupted spring
+        looks right and an interrupted ease does not.
+      </p>
+    </div>
+
+    <main>
+      <section>
+        <p class="label">01 · spring vs. easing</p>
+        <h2>Duration is the wrong parameter</h2>
+        <p class="lead">
+          Both balls travel the same distance. The grey one uses a fixed
+          400&nbsp;ms ease; the coloured one is a spring. Interrupt them
+          mid-flight — hit <em>launch</em> again before they land — and watch
+          which one keeps its momentum.
+        </p>
+        <div class="panel" style="margin-top: 1.4rem">
+          <div class="rowlabel"><span>spring</span><span id="settle">—</span></div>
+          <div class="track"><div class="ball" id="ballSpring"></div></div>
+          <div class="rowlabel"><span>ease · 400ms</span><span>fixed duration</span></div>
+          <div class="track"><div class="ball ease" id="ballEase"></div></div>
+          <div class="knobs">
+            <label>stiffness <input type="range" id="stiff" min="20" max="800" value="260" /><output id="stiff-out"></output></label>
+            <label>damping <input type="range" id="damp" min="1" max="60" value="20" /><output id="damp-out"></output></label>
+            <label>mass <input type="range" id="mass" min="1" max="60" value="10" /><output id="mass-out"></output></label>
+            <label>velocity <input type="range" id="vel" min="-2000" max="2000" value="0" /><output id="vel-out"></output></label>
+          </div>
+          <button class="go" id="launch" type="button">launch ↔</button>
+        </div>
+      </section>
+
+      <section>
+        <p class="label">02 · drag with momentum</p>
+        <h2>Throw it</h2>
+        <p class="lead">
+          Pointer velocity is measured on release and handed to the spring as its
+          initial velocity, so the puck carries the throw and then springs back to
+          centre. The whole behaviour is about fifteen lines.
+        </p>
+        <div class="arena" id="arena"><div class="puck" id="puck">drag me</div></div>
+      </section>
+
+      <section>
+        <p class="label">03 · shared layout (FLIP)</p>
+        <h2>One element, two positions</h2>
+        <p class="lead">
+          Click a tile. It measures where it is, moves to its final layout, then
+          animates the difference away — <strong>F</strong>irst,
+          <strong>L</strong>ast, <strong>I</strong>nvert, <strong>P</strong>lay.
+          Only <code>transform</code> is animated, so it never triggers layout
+          during the tween.
+        </p>
+        <div class="tiles" id="tiles"></div>
+      </section>
+
+      <section>
+        <p class="label">04 · gestures</p>
+        <h2>hover and press</h2>
+        <p class="lead">
+          <code>hover()</code> and <code>press()</code> handle the awkward parts —
+          pointer capture, cancel on leave, keyboard equivalence — and return a
+          cleanup function.
+        </p>
+        <div class="gest" id="gest">
+          <div>hover me</div>
+          <div>press me</div>
+          <div>both</div>
+        </div>
+      </section>
+
+      <section>
+        <p class="label">05 · stagger on enter</p>
+        <h2>inView + stagger</h2>
+        <ul class="stag" id="stag"></ul>
+      </section>
+
+      <section>
+        <h2>Choosing spring values</h2>
+        <ul class="lead">
+          <li>
+            <strong>stiffness</strong> — how hard it pulls toward the target.
+            Higher is snappier. 100 is soft, 400 is sharp.
+          </li>
+          <li>
+            <strong>damping</strong> — how much it resists motion. Below the
+            critical value it overshoots and bounces; at or above it settles
+            without overshoot. Critical damping is
+            <code>2·√(stiffness·mass)</code>.
+          </li>
+          <li>
+            <strong>mass</strong> — inertia. Higher mass means slower to start and
+            slower to stop; it is the knob for making something feel heavy.
+          </li>
+          <li>
+            For UI, start at <code>{ stiffness: 300, damping: 30, mass: 1 }</code>
+            and adjust damping first. Reach for bounce only on things that should
+            feel playful — never on a menu the user is waiting on.
+          </li>
+        </ul>
+      </section>
+    </main>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

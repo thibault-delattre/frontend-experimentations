@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Modern Colour — Frontend Experimentations</title>
+    <link rel="stylesheet" href="../../src/styles/base.css" />
+    <style>
+      /* ═══════════════════════════════════════════════════════════════════
+         MODERN COLOUR
+
+         OKLCH is perceptually uniform: equal steps in L look like equal steps
+         in brightness, and rotating H does not change perceived lightness the
+         way rotating HSL's hue does. That single property is what makes
+         generated palettes and accessible contrast tractable.
+
+           oklch(L C H)   L 0–100%  C 0–~0.4  H 0–360deg
+         ═══════════════════════════════════════════════════════════════════ */
+
+      /* One seed hue drives an entire theme. Change --h and everything moves. */
+      .theme {
+        --h: 265;
+        --c: 0.18;
+      }
+
+      .ramp {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(56px, 1fr));
+        border-radius: var(--radius);
+        overflow: hidden;
+        border: 1px solid var(--line);
+      }
+      .ramp div {
+        aspect-ratio: 1 / 1.4;
+        display: grid;
+        place-items: end center;
+        padding-bottom: 0.4rem;
+        font-family: var(--font-mono);
+        font-size: 0.65rem;
+        /* Pick readable text automatically: contrast-color() where supported,
+           otherwise a lightness threshold. */
+        color: oklch(from var(--bg) calc((l - 0.62) * -1000) 0 0);
+      }
+      @supports (color: contrast-color(red)) {
+        .ramp div { color: contrast-color(var(--bg)); }
+      }
+      .ramp div { background: var(--bg); }
+
+      /* --- Relative colour syntax --------------------------------------
+         `oklch(from <colour> L C H)` decomposes an existing colour into
+         channel keywords you can do arithmetic on. This is how you build a
+         hover state that is correct for *any* input colour, including one that
+         arrives at runtime from a CMS. */
+      .rel {
+        display: grid;
+        gap: 0.6rem;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      }
+      .rel > div {
+        --base: oklch(62% 0.2 var(--h));
+        padding: 1rem;
+        border-radius: var(--radius-sm);
+        font-size: 0.8rem;
+        font-family: var(--font-mono);
+        border: 1px solid oklch(from var(--base) calc(l + 0.12) c h);
+      }
+      .rel .b1 { background: var(--base); color: oklch(from var(--base) 0.98 0.02 h); }
+      .rel .b2 { background: oklch(from var(--base) calc(l * 0.55) c h); color: oklch(from var(--base) 0.95 0.05 h); }
+      .rel .b3 { background: oklch(from var(--base) l calc(c * 0.25) h); color: oklch(from var(--base) 0.97 0.02 h); }
+      .rel .b4 { background: oklch(from var(--base) l c calc(h + 180)); color: white; }
+      .rel .b5 { background: color-mix(in oklch, var(--base), white 60%); color: oklch(30% 0.1 var(--h)); }
+      .rel .b6 { background: color-mix(in oklab, var(--base), black 45%); color: white; }
+
+      /* --- Gradient interpolation space --------------------------------
+         The same two endpoints, interpolated three ways. sRGB drives through a
+         desaturated grey; oklab keeps chroma up; `in oklch longer hue` takes
+         the long way round the wheel for a rainbow. */
+      .grads { display: grid; gap: 0.5rem; }
+      .grads > div {
+        height: 56px;
+        border-radius: var(--radius-sm);
+        display: flex;
+        align-items: center;
+        padding-left: 0.8rem;
+        font-family: var(--font-mono);
+        font-size: 0.72rem;
+        color: oklch(100% 0 0 / 0.85);
+        text-shadow: 0 1px 4px oklch(0% 0 0 / 0.6);
+      }
+      .g-srgb { background: linear-gradient(90deg in srgb, oklch(65% 0.24 25), oklch(65% 0.2 250)); }
+      .g-oklab { background: linear-gradient(90deg in oklab, oklch(65% 0.24 25), oklch(65% 0.2 250)); }
+      .g-oklch { background: linear-gradient(90deg in oklch, oklch(65% 0.24 25), oklch(65% 0.2 250)); }
+      .g-long { background: linear-gradient(90deg in oklch longer hue, oklch(65% 0.24 25), oklch(65% 0.2 250)); }
+
+      /* --- Wide gamut ---------------------------------------------------
+         display-p3 reaches saturations sRGB cannot express. Always declare the
+         sRGB value first as the fallback — the @media query is the switch. */
+      .gamut { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+      .gamut div {
+        height: 90px;
+        border-radius: var(--radius-sm);
+        display: grid;
+        place-items: center;
+        font-family: var(--font-mono);
+        font-size: 0.75rem;
+        color: black;
+      }
+      .gamut .srgb { background: rgb(255 0 80); }
+      .gamut .p3 { background: rgb(255 0 80); }
+      @media (color-gamut: p3) {
+        .gamut .p3 { background: color(display-p3 1 0 0.31); }
+      }
+
+      /* --- light-dark() -------------------------------------------------
+         One declaration, both themes. Requires color-scheme to be set. */
+      .ld {
+        color-scheme: light dark;
+        padding: 1.4rem;
+        border-radius: var(--radius);
+        background: light-dark(oklch(96% 0.02 var(--h)), oklch(22% 0.04 var(--h)));
+        color: light-dark(oklch(25% 0.06 var(--h)), oklch(94% 0.03 var(--h)));
+        border: 1px solid light-dark(oklch(85% 0.04 var(--h)), oklch(35% 0.05 var(--h)));
+      }
+      .ld.force-light { color-scheme: light; }
+      .ld.force-dark { color-scheme: dark; }
+
+      /* Controls */
+      .controls { display: flex; gap: 1.2rem; flex-wrap: wrap; align-items: center; margin: 1rem 0 1.6rem; }
+      .controls label { font-size: 0.82rem; color: var(--fg-dim); display: flex; gap: 0.6rem; align-items: center; }
+      input[type='range'] { accent-color: oklch(70% 0.2 var(--h)); width: 180px; }
+      output { font-family: var(--font-mono); font-size: 0.78rem; color: var(--accent-2); min-width: 3.5ch; }
+
+      main { max-width: 1000px; margin: 0 auto; padding: 0 var(--pad) 6rem; }
+      section { margin: 3.2rem 0; }
+      h2 { font-size: 1.25rem; }
+      .lead { color: var(--fg-dim); max-width: 66ch; }
+      code { white-space: nowrap; }
+    </style>
+  </head>
+  <body>
+    <div class="note">
+      <h1>Modern Colour</h1>
+      <p>
+        <strong>OKLCH</strong>, relative colour syntax,
+        <code>color-mix()</code>, interpolation spaces, wide gamut and
+        <code>light-dark()</code>. Move the hue slider — the entire page is
+        derived from one number.
+      </p>
+    </div>
+
+    <main class="theme" id="theme">
+      <div class="controls">
+        <label>
+          Hue
+          <input type="range" id="hue" min="0" max="360" value="265" />
+          <output id="hue-out">265</output>
+        </label>
+        <label>
+          Chroma
+          <input type="range" id="chroma" min="0" max="35" value="18" />
+          <output id="chroma-out">0.18</output>
+        </label>
+      </div>
+
+      <section>
+        <h2>1 · A perceptual ramp</h2>
+        <p class="lead">
+          Twelve steps of equal lightness spacing at constant hue. In HSL the
+          same sweep would look bright in yellow and muddy in blue; in OKLCH
+          each step is the same perceived jump, which is what makes generated
+          palettes usable without hand-tuning.
+        </p>
+        <div class="ramp" id="ramp"></div>
+      </section>
+
+      <section>
+        <h2>2 · Relative colour syntax</h2>
+        <p class="lead">
+          <code>oklch(from var(--base) calc(l * 0.55) c h)</code> — take a
+          colour apart, do maths on its channels, put it back. Hover states,
+          disabled states and borders all derive from a single token, so a
+          runtime brand colour still produces a coherent set.
+        </p>
+        <div class="rel">
+          <div class="b1">base</div>
+          <div class="b2">l × 0.55</div>
+          <div class="b3">c × 0.25</div>
+          <div class="b4">h + 180</div>
+          <div class="b5">mix white 60%</div>
+          <div class="b6">mix black 45% (oklab)</div>
+        </div>
+      </section>
+
+      <section>
+        <h2>3 · Interpolation space matters</h2>
+        <p class="lead">
+          Identical endpoints, four gradients. The sRGB one dips through grey in
+          the middle — the "dead zone" that has made two-colour gradients look
+          cheap for twenty years.
+        </p>
+        <div class="grads">
+          <div class="g-srgb">in srgb — note the grey middle</div>
+          <div class="g-oklab">in oklab</div>
+          <div class="g-oklch">in oklch</div>
+          <div class="g-long">in oklch longer hue</div>
+        </div>
+      </section>
+
+      <section>
+        <h2>4 · Wide gamut</h2>
+        <p class="lead">
+          On a P3 display the right swatch is visibly more saturated. On sRGB
+          they are identical, because the fallback declaration is the same
+          colour.
+        </p>
+        <div class="gamut">
+          <div class="srgb">rgb(255 0 80)</div>
+          <div class="p3">color(display-p3 1 0 .31)</div>
+        </div>
+      </section>
+
+      <section>
+        <h2>5 · light-dark()</h2>
+        <p class="lead">
+          One property, both themes, no duplicated media query — provided
+          <code>color-scheme</code> is declared on the element or an ancestor.
+        </p>
+        <div style="display: grid; gap: 0.6rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr))">
+          <div class="ld force-light">forced light</div>
+          <div class="ld force-dark">forced dark</div>
+          <div class="ld">follows your OS</div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Rules of thumb</h2>
+        <ul class="lead">
+          <li>Store tokens as OKLCH triples, not hex. Derivation is then arithmetic.</li>
+          <li>
+            Chroma above ~0.25 is out of sRGB for most hues; browsers gamut-map
+            it, so two "different" high-chroma values can render identically.
+          </li>
+          <li>
+            Contrast is still a WCAG calculation on relative luminance — equal
+            OKLCH lightness does not guarantee an equal contrast ratio against a
+            given background. Check, or use <code>contrast-color()</code>.
+          </li>
+          <li>Set <code>color-scheme</code> or form controls and scrollbars stay light.</li>
+        </ul>
+      </section>
+    </main>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

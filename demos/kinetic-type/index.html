@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kinetic Typography — Frontend Experimentations</title>
+    <link rel="stylesheet" href="../../src/styles/base.css" />
+    <!-- Roboto Flex: one file, many axes (weight, width, slant, grade, optical size). -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wdth,wght,GRAD,slnt@8..144,25..151,100..1000,-200..150,-10..0&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* ═══════════════════════════════════════════════════════════════════
+         KINETIC TYPOGRAPHY
+
+         A variable font is a continuous design space, not a set of weights.
+         Animating along an axis is therefore free of the popping you get when
+         swapping between static cuts — and `font-variation-settings` is
+         animatable, so scroll and pointer can drive it directly.
+         ═══════════════════════════════════════════════════════════════════ */
+
+      body {
+        font-family: 'Roboto Flex', var(--font-sans);
+      }
+
+      /* --- 1 · Weight & width driven by scroll ------------------------- */
+      .axis-scroll {
+        font-size: clamp(3rem, 15vw, 12rem);
+        line-height: 0.85;
+        margin: 0;
+        text-align: center;
+        font-variation-settings: 'wght' 100, 'wdth' 25, 'slnt' 0;
+      }
+      @supports (animation-timeline: view()) {
+        .axis-scroll {
+          animation: fatten linear both;
+          animation-timeline: view();
+          animation-range: cover;
+        }
+        @keyframes fatten {
+          0%   { font-variation-settings: 'wght' 100, 'wdth' 151, 'slnt' 0; }
+          50%  { font-variation-settings: 'wght' 1000, 'wdth' 25, 'slnt' -10; }
+          100% { font-variation-settings: 'wght' 200, 'wdth' 120, 'slnt' 0; }
+        }
+      }
+
+      /* --- 2 · Per-character stagger through one custom property -------
+         main.js wraps each character in a <span> carrying --i. Everything
+         else — the delay ramp, the wave — is arithmetic in CSS. */
+      .split {
+        font-size: clamp(2rem, 9vw, 6rem);
+        font-weight: 700;
+        letter-spacing: -0.03em;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        margin: 0;
+      }
+      .split span {
+        display: inline-block;
+        white-space: pre;
+        animation: wave 2.4s ease-in-out infinite;
+        animation-delay: calc(var(--i) * 60ms);
+      }
+      @keyframes wave {
+        0%, 100% { translate: 0 0; font-variation-settings: 'wght' 300; }
+        40%      { translate: 0 -0.14em; font-variation-settings: 'wght' 900; }
+      }
+
+      /* --- 3 · Pointer proximity ---------------------------------------
+         --px/--py are the pointer position in the element's own space, written
+         once per frame by main.js. Each glyph computes its own distance in
+         pure CSS via a hypot()-free approximation — cheap, and never touches
+         the main thread again. */
+      .proximity {
+        font-size: clamp(2rem, 8vw, 5.5rem);
+        font-weight: 500;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        margin: 0;
+        cursor: crosshair;
+      }
+      .proximity span {
+        display: inline-block;
+        white-space: pre;
+        /* --d is 0..1, nearest to farthest. Written per glyph by main.js. */
+        font-variation-settings:
+          'wght' calc(200 + (1 - var(--d, 1)) * 800),
+          'wdth' calc(60 + (1 - var(--d, 1)) * 90);
+        color: oklch(calc(70% + (1 - var(--d, 1)) * 25%) calc(var(--d, 1) * 0.02 + (1 - var(--d, 1)) * 0.2) 265);
+        transition: font-variation-settings 0.25s var(--ease-out), color 0.25s;
+      }
+
+      /* --- 4 · Marquee that reacts to scroll velocity ------------------- */
+      .marquee {
+        overflow: clip;
+        white-space: nowrap;
+        border-block: 1px solid var(--line);
+        padding: 0.6rem 0;
+        --speed: 22s;
+      }
+      .marquee__track {
+        display: inline-flex;
+        gap: 2rem;
+        animation: marquee var(--speed) linear infinite;
+        /* --skew is fed by scroll velocity in main.js. */
+        transform: skewX(calc(var(--skew, 0) * 1deg));
+        will-change: transform;
+      }
+      .marquee span {
+        font-size: clamp(1.6rem, 5vw, 3.4rem);
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        color: transparent;
+        -webkit-text-stroke: 1px var(--fg-faint);
+      }
+      .marquee span:nth-child(even) {
+        color: var(--fg);
+        -webkit-text-stroke: 0;
+      }
+      @keyframes marquee {
+        to { translate: -50% 0; }
+      }
+
+      /* --- 5 · Text clipped by the viewport edge ------------------------
+         The 2026 hero: type so large it is cropped by the browser frame. */
+      .oversize {
+        font-size: 28vw;
+        font-weight: 900;
+        letter-spacing: -0.06em;
+        line-height: 0.8;
+        margin: 0;
+        white-space: nowrap;
+        translate: -6vw 0;
+        background: linear-gradient(100deg, var(--accent), var(--accent-2) 40%, var(--accent-3));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+
+      main {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 0 var(--pad) 10vh;
+      }
+      section {
+        margin: 16vh 0;
+      }
+      .label {
+        font-family: var(--font-mono);
+        font-size: 0.72rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--fg-faint);
+        margin-bottom: 1.4rem;
+      }
+      .lead { color: var(--fg-dim); max-width: 62ch; margin-top: 1.4rem; }
+      .full { max-width: none; overflow: clip; }
+    </style>
+  </head>
+  <body>
+    <div class="note">
+      <h1>Kinetic Typography</h1>
+      <p>
+        Type as the primary visual, not a caption on one. Everything here rides
+        on <strong>variable font axes</strong> — one file that interpolates
+        continuously through weight, width and slant, so motion along an axis is
+        as smooth as moving a slider.
+      </p>
+    </div>
+
+    <main>
+      <section>
+        <p class="label">01 · scroll drives the weight and width axes</p>
+        <h2 class="axis-scroll">VARIABLE</h2>
+        <p class="lead">
+          <code>font-variation-settings</code> inside
+          <code>@keyframes</code>, with <code>animation-timeline: view()</code>.
+          The glyphs thicken and narrow as the block crosses the viewport.
+        </p>
+      </section>
+
+      <section>
+        <p class="label">02 · per-character stagger, one custom property</p>
+        <h2 class="split" data-split>KINETIC MOTION</h2>
+        <p class="lead">
+          JavaScript does one thing: wrap each character and set
+          <code>--i</code>. The delay ramp is
+          <code>calc(var(--i) * 60ms)</code> — no timeline library, no per-glyph
+          animation objects.
+        </p>
+      </section>
+
+      <section>
+        <p class="label">03 · pointer proximity</p>
+        <h2 class="proximity" data-split data-proximity>HOVER ACROSS ME</h2>
+        <p class="lead">
+          Each glyph gets a normalised distance <code>--d</code>; weight, width
+          and colour all read from that single number. Move the pointer slowly —
+          this is the interaction behind most award-site navigations.
+        </p>
+      </section>
+
+      <section class="full">
+        <p class="label">04 · marquee skewed by scroll velocity</p>
+        <div class="marquee">
+          <div class="marquee__track" id="track"></div>
+        </div>
+        <p class="lead">
+          Scroll fast. The track's skew is driven by scroll delta and eased back
+          to zero — the cheapest possible "the page has weight" cue.
+        </p>
+      </section>
+
+      <section class="full">
+        <p class="label">05 · oversized, cropped by the frame</p>
+        <h2 class="oversize">TYPE</h2>
+      </section>
+
+      <section>
+        <p class="label">notes</p>
+        <ul class="lead">
+          <li>
+            Animating <code>font-variation-settings</code> triggers layout on
+            every frame. It is fine on one headline; it is not fine on a
+            paragraph. For long text, animate <code>transform</code> instead.
+          </li>
+          <li>
+            Splitting text into spans destroys it for screen readers — keep the
+            original string in an <code>aria-label</code> and mark the spans
+            <code>aria-hidden</code>. <code>main.js</code> does this.
+          </li>
+          <li>
+            Prefer the registered shorthands (<code>font-weight</code>,
+            <code>font-stretch</code>) where they exist; they interpolate the
+            same way and inherit properly.
+          </li>
+        </ul>
+      </section>
+    </main>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

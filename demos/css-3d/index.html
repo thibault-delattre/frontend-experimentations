@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CSS 3D Space — Frontend Experimentations</title>
+    <link rel="stylesheet" href="../../src/styles/base.css" />
+    <style>
+      /* ═══════════════════════════════════════════════════════════════════
+         CSS 3D
+
+         The layout engine has a real 3D pipeline. Three rules govern it:
+
+           perspective        on the PARENT — how far the camera sits from z=0.
+                              Smaller = wider lens = more dramatic.
+           transform-style: preserve-3d
+                              on any element whose CHILDREN must stay in 3D.
+                              Missing this is why most CSS cubes look flat.
+           backface-visibility
+                              hide a face when it turns away from the camera.
+
+         Composited on the GPU, so this is cheaper than the equivalent WebGL.
+         ═══════════════════════════════════════════════════════════════════ */
+
+      /* 1 ── TILT CARD ────────────────────────────────────────────────── */
+      .tilt-scene { perspective: 900px; }
+      .tilt {
+        position: relative;
+        width: min(88vw, 360px);
+        aspect-ratio: 3 / 4;
+        margin: 0 auto;
+        border-radius: 20px;
+        transform-style: preserve-3d;
+        /* --rx/--ry written by main.js; the spring lives in the transition. */
+        transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+        transition: transform 0.5s var(--ease-out);
+        background: linear-gradient(150deg, var(--bg-2), var(--bg-1));
+        border: 1px solid var(--line);
+        box-shadow: 0 30px 60px oklch(0% 0 0 / 0.5);
+      }
+      .tilt.is-live { transition: none; } /* no lag while the pointer is down */
+
+      /* Layers lifted off the card surface in z: real parallax, not a fake. */
+      .tilt__layer {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        transform: translateZ(var(--z, 0px));
+      }
+      .tilt__title {
+        font-size: 2.6rem;
+        font-weight: 800;
+        letter-spacing: -0.04em;
+        --z: 60px;
+      }
+      .tilt__sub { --z: 34px; align-items: end; padding-bottom: 2rem; color: var(--fg-dim); font-size: 0.85rem; }
+      .tilt__ring {
+        --z: 12px;
+        border: 1px solid color-mix(in oklch, var(--accent) 60%, transparent);
+        border-radius: 14px;
+        margin: 14px;
+        inset: 0;
+      }
+      /* Specular sheen tracking the pointer. */
+      .tilt__gloss {
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        background: radial-gradient(
+          40% 40% at var(--mx, 50%) var(--my, 50%),
+          oklch(100% 0 0 / 0.25),
+          transparent 65%
+        );
+        pointer-events: none;
+      }
+
+      /* 2 ── CUBE ─────────────────────────────────────────────────────── */
+      .cube-scene {
+        perspective: 1000px;
+        height: 320px;
+        display: grid;
+        place-items: center;
+      }
+      .cube {
+        --s: 110px;
+        position: relative;
+        width: calc(var(--s) * 2);
+        height: calc(var(--s) * 2);
+        transform-style: preserve-3d;
+        animation: tumble 18s linear infinite;
+      }
+      @keyframes tumble {
+        to { transform: rotateX(360deg) rotateY(720deg); }
+      }
+      .cube div {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        font-family: var(--font-mono);
+        font-size: 0.8rem;
+        color: oklch(100% 0 0 / 0.7);
+        border: 1px solid oklch(100% 0 0 / 0.25);
+        background: oklch(60% 0.2 var(--h) / 0.35);
+        backdrop-filter: blur(2px);
+      }
+      /* Each face: rotate into place, then push out by half the edge length. */
+      .cube .f1 { --h: 265; transform: rotateY(0deg) translateZ(var(--s)); }
+      .cube .f2 { --h: 200; transform: rotateY(90deg) translateZ(var(--s)); }
+      .cube .f3 { --h: 330; transform: rotateY(180deg) translateZ(var(--s)); }
+      .cube .f4 { --h: 150; transform: rotateY(-90deg) translateZ(var(--s)); }
+      .cube .f5 { --h: 60; transform: rotateX(90deg) translateZ(var(--s)); }
+      .cube .f6 { --h: 20; transform: rotateX(-90deg) translateZ(var(--s)); }
+
+      /* 3 ── COVERFLOW ────────────────────────────────────────────────── */
+      .flow {
+        perspective: 1200px;
+        display: flex;
+        gap: 1.4rem;
+        overflow-x: auto;
+        padding: 3rem 40%;
+        scroll-snap-type: x mandatory;
+        scrollbar-width: none;
+      }
+      .flow::-webkit-scrollbar { display: none; }
+      .flow__item {
+        flex: 0 0 200px;
+        aspect-ratio: 3 / 4;
+        scroll-snap-align: center;
+        border-radius: var(--radius);
+        display: grid;
+        place-items: center;
+        font-size: 2rem;
+        font-weight: 700;
+        background: linear-gradient(150deg, oklch(55% 0.2 var(--h)), oklch(30% 0.14 var(--h)));
+        transform-style: preserve-3d;
+        /* Rotate based on where the item sits in the scrollport. */
+        animation: flow linear both;
+        animation-timeline: view(x);
+        animation-range: cover;
+      }
+      @keyframes flow {
+        0%   { transform: rotateY(52deg) scale(0.8) translateZ(-90px); opacity: 0.4; }
+        50%  { transform: rotateY(0deg) scale(1.06) translateZ(60px); opacity: 1; }
+        100% { transform: rotateY(-52deg) scale(0.8) translateZ(-90px); opacity: 0.4; }
+      }
+
+      /* 4 ── FLIP ─────────────────────────────────────────────────────── */
+      .flip-scene { perspective: 1200px; width: min(80vw, 300px); aspect-ratio: 3/2; margin: 0 auto; }
+      .flip {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        transform-style: preserve-3d;
+        transition: transform 0.7s var(--ease-io);
+        cursor: pointer;
+      }
+      .flip-scene:hover .flip,
+      .flip-scene:focus-within .flip { transform: rotateY(180deg); }
+      .flip > * {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        border-radius: var(--radius);
+        border: 1px solid var(--line);
+        /* Without this, both faces render and you see the mirrored back. */
+        backface-visibility: hidden;
+        font-weight: 600;
+      }
+      .flip .back { transform: rotateY(180deg); background: var(--accent); color: white; }
+      .flip .front { background: var(--bg-2); }
+
+      main { max-width: 1000px; margin: 0 auto; padding: 0 var(--pad) 6rem; }
+      section { margin: 4rem 0; }
+      h2 { font-size: 1.25rem; }
+      .lead { color: var(--fg-dim); max-width: 64ch; }
+      .full { max-width: none; margin-inline: calc(var(--pad) * -1); }
+    </style>
+  </head>
+  <body>
+    <div class="note">
+      <h1>CSS 3D Space</h1>
+      <p>
+        Depth without a renderer. <strong>Move over the card</strong> — the
+        title, ring and subtitle sit at different <code>translateZ</code>
+        offsets, so the parallax between them is computed by the browser's own
+        perspective matrix rather than faked with offsets.
+      </p>
+    </div>
+
+    <main>
+      <section>
+        <h2>1 · Pointer-tilted card with z-layered contents</h2>
+        <div class="tilt-scene">
+          <div class="tilt" id="tilt">
+            <div class="tilt__layer tilt__ring"></div>
+            <div class="tilt__layer tilt__title">DEPTH</div>
+            <div class="tilt__layer tilt__sub">translateZ(60px) · translateZ(34px) · translateZ(12px)</div>
+            <div class="tilt__gloss"></div>
+          </div>
+        </div>
+        <p class="lead" style="margin-top: 1.4rem">
+          JavaScript writes two numbers, <code>--rx</code> and
+          <code>--ry</code>. Everything else — the parallax, the perspective
+          foreshortening, the gloss — is CSS. Remove
+          <code>transform-style: preserve-3d</code> and the layers collapse onto
+          the card face; that one line is the whole difference.
+        </p>
+      </section>
+
+      <section>
+        <h2>2 · A real cube</h2>
+        <div class="cube-scene">
+          <div class="cube">
+            <div class="f1">front</div><div class="f2">right</div>
+            <div class="f3">back</div><div class="f4">left</div>
+            <div class="f5">top</div><div class="f6">bottom</div>
+          </div>
+        </div>
+        <p class="lead">
+          Six faces, each <code>rotate</code>d into its plane and then
+          <code>translateZ(half-edge)</code> outward. Semi-transparent so you can
+          see the construction.
+        </p>
+      </section>
+
+      <section class="full">
+        <h2 style="padding: 0 var(--pad)">3 · Coverflow, driven by scroll</h2>
+        <div class="flow" id="flow"></div>
+        <p class="lead" style="padding: 0 var(--pad)">
+          <code>animation-timeline: view(x)</code> plus a 3D keyframe. Scroll the
+          strip — each item's rotation is a function of its position in the
+          scrollport, with no JavaScript in the loop.
+        </p>
+      </section>
+
+      <section>
+        <h2>4 · Flip card</h2>
+        <div class="flip-scene">
+          <div class="flip" tabindex="0">
+            <div class="front">hover / focus me</div>
+            <div class="back">backface-visibility: hidden</div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>When to reach for WebGL instead</h2>
+        <ul class="lead">
+          <li>
+            CSS 3D has <strong>no z-buffer</strong>. Intersecting geometry sorts
+            by paint order, not by depth — two crossing planes will always show
+            one fully in front of the other.
+          </li>
+          <li>No lighting, no shadows, no textures beyond what CSS can paint.</li>
+          <li>
+            But: it is accessible, selectable, styleable and hardware-composited.
+            For cards, carousels, flips and menus it is the right tool, and it
+            costs nothing to load.
+          </li>
+        </ul>
+      </section>
+    </main>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

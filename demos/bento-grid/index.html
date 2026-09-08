@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Bento Grid & Container Queries — Frontend Experimentations</title>
+    <link rel="stylesheet" href="../../src/styles/base.css" />
+    <style>
+      /* ═══════════════════════════════════════════════════════════════════
+         BENTO GRID + CONTAINER QUERIES
+
+         Media queries ask "how wide is the window?". Container queries ask
+         "how wide is the box I was actually placed in?" — which is the question
+         a component always meant to ask. A card in a 3-col grid and the same
+         card in a sidebar restyle themselves correctly with no props, no
+         variants and no knowledge of the page.
+         ═══════════════════════════════════════════════════════════════════ */
+
+      .bento {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: repeat(4, 1fr);
+        grid-auto-rows: minmax(140px, auto);
+      }
+      /* Deliberately uneven spans — that is the whole bento idea. */
+      .bento > :nth-child(1) { grid-column: span 2; grid-row: span 2; }
+      .bento > :nth-child(2) { grid-column: span 2; }
+      .bento > :nth-child(3) { grid-column: span 1; }
+      .bento > :nth-child(4) { grid-column: span 1; }
+      .bento > :nth-child(5) { grid-column: span 1; grid-row: span 2; }
+      .bento > :nth-child(6) { grid-column: span 3; }
+      .bento > :nth-child(7) { grid-column: span 3; }
+
+      @media (max-width: 780px) {
+        .bento { grid-template-columns: repeat(2, 1fr); }
+        .bento > * { grid-column: span 2 !important; grid-row: auto !important; }
+        .bento > :nth-child(3), .bento > :nth-child(4) { grid-column: span 1 !important; }
+      }
+
+      /* --- The card: styles itself from its OWN width ------------------- */
+      .cell {
+        /* Two declarations turn this into a query container. */
+        container-type: inline-size;
+        container-name: cell;
+
+        position: relative;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: var(--bg-1);
+        padding: 1.2rem;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+        transition: border-color 0.3s, background 0.3s;
+      }
+      .cell:hover {
+        border-color: color-mix(in oklch, var(--accent) 50%, var(--line));
+      }
+      .cell__k {
+        font-family: var(--font-mono);
+        font-size: 0.68rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--fg-faint);
+      }
+      .cell__v {
+        font-size: 1.6rem;
+        font-weight: 650;
+        letter-spacing: -0.03em;
+        /* Container query *units*: 1cqi = 1% of the container's inline size.
+           Type that scales with the box, not the viewport. */
+        font-size: clamp(1.4rem, 11cqi, 3.4rem);
+        line-height: 1;
+      }
+      .cell__note { font-size: 0.85rem; color: var(--fg-dim); margin: 0; }
+      .cell__extra { display: none; }
+      .cell__chart { display: none; margin-top: auto; }
+
+      /* Narrow: value only. */
+      @container cell (min-width: 260px) {
+        .cell__note { display: block; }
+      }
+      /* Medium: a sparkline appears. */
+      @container cell (min-width: 340px) {
+        .cell__chart { display: block; }
+      }
+      /* Wide: switch to a two-column arrangement entirely. */
+      @container cell (min-width: 520px) {
+        .cell {
+          display: grid;
+          grid-template-columns: 1fr auto;
+          align-items: center;
+          gap: 1.4rem;
+        }
+        .cell__extra {
+          display: block;
+          font-size: 0.8rem;
+          color: var(--fg-faint);
+          border-left: 1px solid var(--line);
+          padding-left: 1.2rem;
+          max-width: 30ch;
+        }
+        .cell__chart { grid-column: 1 / -1; }
+      }
+
+      .spark {
+        width: 100%;
+        height: 42px;
+        overflow: visible;
+      }
+      .spark path {
+        fill: none;
+        stroke: var(--accent-2);
+        stroke-width: 2;
+        stroke-linecap: round;
+        /* Draw-on with a scroll-driven timeline. */
+        stroke-dasharray: 1;
+        stroke-dashoffset: 1;
+        pathLength: 1;
+      }
+      @supports (animation-timeline: view()) {
+        .spark path {
+          animation: draw linear both;
+          animation-timeline: view();
+          animation-range: entry 10% cover 30%;
+        }
+        @keyframes draw { to { stroke-dashoffset: 0; } }
+      }
+
+      /* --- Subgrid: children aligning to the PARENT's tracks ------------ */
+      .sub {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+      }
+      .sub__card {
+        display: grid;
+        /* Three rows shared with siblings, so every title, body and footer
+           lines up across cards regardless of content length. */
+        grid-row: span 3;
+        grid-template-rows: subgrid;
+        gap: 0.5rem;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 1.1rem;
+        background: var(--bg-1);
+      }
+      .sub { grid-auto-rows: auto; }
+      .sub__card h3 { margin: 0; font-size: 1rem; }
+      .sub__card p { margin: 0; font-size: 0.85rem; color: var(--fg-dim); }
+      .sub__card footer {
+        font-family: var(--font-mono);
+        font-size: 0.72rem;
+        color: var(--accent-2);
+        align-self: end;
+      }
+      @media (max-width: 680px) { .sub { grid-template-columns: 1fr; } }
+
+      /* --- Scroll-state queries ---------------------------------------- */
+      /* A container can be asked whether it is currently stuck, or whether it
+         still has content to scroll — styling that used to need a sentinel
+         element and an IntersectionObserver. */
+      .scroller {
+        container-type: scroll-state;
+        max-height: 240px;
+        overflow-y: auto;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: var(--bg-1);
+      }
+      .sticky-head {
+        position: sticky;
+        top: 0;
+        padding: 0.7rem 1rem;
+        background: var(--bg-2);
+        border-bottom: 1px solid transparent;
+        font-weight: 600;
+        font-size: 0.9rem;
+        transition: box-shadow 0.25s, border-color 0.25s;
+      }
+      @container scroll-state(stuck: top) {
+        .sticky-head {
+          border-bottom-color: var(--line);
+          box-shadow: 0 8px 20px oklch(0% 0 0 / 0.35);
+        }
+        .sticky-head::after { content: ' — stuck'; color: var(--accent); font-weight: 400; }
+      }
+      .scroller ul { margin: 0; padding: 0.8rem 1.4rem; color: var(--fg-dim); font-size: 0.9rem; }
+
+      main { max-width: 1120px; margin: 0 auto; padding: 0 var(--pad) 6rem; }
+      section { margin: 3.5rem 0; }
+      h2 { font-size: 1.3rem; }
+      .lead { color: var(--fg-dim); max-width: 66ch; }
+      .resize {
+        resize: horizontal;
+        overflow: auto;
+        min-width: 220px;
+        max-width: 100%;
+        width: 100%;
+        padding-bottom: 0.6rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="note">
+      <h1>Bento Grid &amp; Container Queries</h1>
+      <p>
+        Asymmetric grid, plus components that restyle from
+        <strong>their own width</strong> rather than the viewport's. Grab the
+        resize handle in the second section to watch one card cross three
+        breakpoints while the window never changes size.
+      </p>
+    </div>
+
+    <main>
+      <section>
+        <h2>1 · The bento</h2>
+        <p class="lead">
+          Uneven <code>span</code> values over a 4-column grid. Each tile is its
+          own container, so the wide ones render a different layout than the
+          narrow ones — same markup, no modifier classes.
+        </p>
+        <div class="bento" id="bento"></div>
+      </section>
+
+      <section>
+        <h2>2 · One component, three layouts</h2>
+        <p class="lead">
+          Drag the bottom-right corner. At 260px the description appears, at
+          340px a sparkline, at 520px it flips to a two-column layout. Written
+          once, in the component's own stylesheet.
+        </p>
+        <div class="resize" id="resize"></div>
+      </section>
+
+      <section>
+        <h2>3 · Subgrid alignment</h2>
+        <p class="lead">
+          <code>grid-template-rows: subgrid</code> lets a card's internals
+          participate in the parent grid's rows, so titles and footers align
+          across cards even when the bodies differ in length.
+        </p>
+        <div class="sub">
+          <article class="sub__card">
+            <h3>Short title</h3>
+            <p>One line.</p>
+            <footer>aligned →</footer>
+          </article>
+          <article class="sub__card">
+            <h3>A considerably longer card title that wraps onto two lines</h3>
+            <p>Two lines of supporting copy that pushes this card taller than its neighbours would otherwise be.</p>
+            <footer>aligned →</footer>
+          </article>
+          <article class="sub__card">
+            <h3>Middle</h3>
+            <p>Some copy of a middling length, enough to wrap once.</p>
+            <footer>aligned →</footer>
+          </article>
+        </div>
+      </section>
+
+      <section>
+        <h2>4 · Scroll-state queries</h2>
+        <p class="lead">
+          <code>container-type: scroll-state</code> plus
+          <code>@container scroll-state(stuck: top)</code> — the sticky header
+          knows it is stuck and grows a shadow. No sentinel element, no observer.
+        </p>
+        <div class="scroller">
+          <div class="sticky-head">Sticky header</div>
+          <ul id="rows"></ul>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

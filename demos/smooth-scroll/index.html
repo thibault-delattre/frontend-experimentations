@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Smooth Scroll &amp; Parallax — Frontend Experimentations</title>
+    <link rel="stylesheet" href="../../src/styles/base.css" />
+    <style>
+      /* Lenis needs these two rules; without them the page fights itself. */
+      html.lenis, html.lenis body { height: auto; }
+      .lenis.lenis-smooth { scroll-behavior: auto !important; }
+      .lenis.lenis-stopped { overflow: hidden; }
+
+      .hero {
+        height: 100vh; display: grid; place-content: center; text-align: center;
+        position: relative; overflow: hidden;
+      }
+      .hero h2 { font-size: clamp(3rem, 14vw, 11rem); letter-spacing: -0.05em; margin: 0; line-height: 0.9; }
+      .hero p { color: var(--fg-dim); }
+      .hero__layer { position: absolute; inset: -30% 0; will-change: transform; pointer-events: none; }
+      .hero__layer:nth-of-type(1) { background: radial-gradient(45% 40% at 25% 35%, oklch(45% 0.22 275 / .85), transparent); }
+      .hero__layer:nth-of-type(2) { background: radial-gradient(40% 35% at 75% 55%, oklch(50% 0.2 190 / .75), transparent); }
+      .hero__layer:nth-of-type(3) { background: radial-gradient(35% 30% at 50% 80%, oklch(55% 0.24 330 / .7), transparent); }
+
+      main { max-width: 1000px; margin: 0 auto; padding: 0 var(--pad) 10rem; }
+      section { margin: 14vh 0; }
+      h3 { font-size: 1.25rem; }
+      .lead { color: var(--fg-dim); max-width: 64ch; }
+      .label { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-faint); margin-bottom: 0.9rem; }
+
+      /* velocity-skewed cards */
+      .skewed { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+      .skewed > div {
+        border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg-1);
+        padding: 1.4rem; min-height: 170px; will-change: transform;
+      }
+      .skewed h4 { margin: 0 0 0.4rem; font-size: 1rem; }
+      .skewed p { margin: 0; font-size: 0.85rem; color: var(--fg-dim); }
+
+      /* depth stack */
+      .depth { position: relative; height: 120vh; }
+      .depth__item {
+        position: sticky; top: 18vh; height: 62vh; border-radius: var(--radius);
+        display: grid; place-items: center; font-size: clamp(1.6rem, 5vw, 3rem); font-weight: 700;
+        border: 1px solid var(--line); will-change: transform;
+      }
+
+      .hud {
+        position: fixed; right: 1.2rem; bottom: 1.2rem; z-index: 90;
+        font-family: var(--font-mono); font-size: 0.72rem; color: var(--fg-faint);
+        background: color-mix(in oklch, var(--bg-1) 80%, transparent);
+        border: 1px solid var(--line); border-radius: var(--radius-sm);
+        padding: 0.6rem 0.8rem; backdrop-filter: blur(10px); line-height: 1.7;
+        min-width: 150px;
+      }
+      .hud b { color: var(--accent-2); font-weight: 500; }
+      .hud button {
+        font: inherit; font-size: 0.7rem; margin-top: 0.4rem; width: 100%;
+        background: var(--bg-2); color: var(--fg); border: 1px solid var(--line);
+        border-radius: 100px; padding: 0.25rem; cursor: pointer;
+      }
+      .anchors { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 1rem; }
+      .anchors button {
+        font: inherit; font-size: 0.8rem; background: var(--bg-2); color: var(--fg);
+        border: 1px solid var(--line); border-radius: 100px; padding: 0.35rem 0.85rem; cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="hud" id="hud"></div>
+
+    <div class="note">
+      <h1>Smooth Scroll &amp; Parallax</h1>
+      <p>
+        Lenis intercepts wheel and touch input and drives its own eased scroll
+        position. Everything downstream — parallax, velocity skew, sticky depth —
+        reads from that single value, in one <code>requestAnimationFrame</code>.
+      </p>
+    </div>
+
+    <div class="hero">
+      <div class="hero__layer" data-depth="0.15"></div>
+      <div class="hero__layer" data-depth="0.35"></div>
+      <div class="hero__layer" data-depth="0.6"></div>
+      <div>
+        <h2 data-depth="-0.1">GLIDE</h2>
+        <p>scroll — or flick, on a trackpad</p>
+      </div>
+    </div>
+
+    <main>
+      <section>
+        <p class="label">01 · velocity</p>
+        <h3>Cards that lean into the scroll</h3>
+        <p class="lead">
+          Lenis exposes <code>velocity</code> on every scroll event. Mapping it
+          to a small skew and a scale gives the page inertia you can feel
+          without any element actually lagging behind.
+        </p>
+        <div class="skewed" id="skewed"></div>
+      </section>
+
+      <section>
+        <p class="label">02 · sticky depth stack</p>
+        <h3>Cards receding as the next arrives</h3>
+        <div class="depth">
+          <div class="depth__item" style="background: linear-gradient(150deg, oklch(50% .2 265), oklch(28% .14 300))">01</div>
+        </div>
+        <div class="depth">
+          <div class="depth__item" style="background: linear-gradient(150deg, oklch(50% .2 190), oklch(28% .14 230))">02</div>
+        </div>
+        <div class="depth">
+          <div class="depth__item" style="background: linear-gradient(150deg, oklch(50% .2 25), oklch(28% .14 60))">03</div>
+        </div>
+      </section>
+
+      <section>
+        <p class="label">03 · programmatic scroll</p>
+        <h3>scrollTo, with easing you control</h3>
+        <p class="lead">
+          Anchor links go through <code>lenis.scrollTo()</code>, so they use the
+          same easing curve as manual scrolling instead of the browser's
+          <code>scroll-behavior: smooth</code>.
+        </p>
+        <div class="anchors">
+          <button type="button" data-to="top">top</button>
+          <button type="button" data-to=".depth">depth stack</button>
+          <button type="button" data-to="#caveats">caveats</button>
+        </div>
+      </section>
+
+      <section id="caveats">
+        <p class="label">04 · the honest part</p>
+        <h3>Smooth scroll is a trade</h3>
+        <ul class="lead">
+          <li>
+            <strong>It breaks native behaviour.</strong> Find-in-page, anchor
+            jumps, scroll restoration, focus scrolling and the scrollbar thumb
+            all have to be re-plumbed through the library.
+          </li>
+          <li>
+            <strong>Some people hate it</strong>, and some get motion sick.
+            Respect <code>prefers-reduced-motion</code> and switch the whole
+            thing off — this demo does.
+          </li>
+          <li>
+            <strong>It cannot use scroll-driven CSS animations.</strong> Native
+            <code>animation-timeline</code> reads the real scroll offset, which
+            is no longer where the content appears to be. Pick one or the other
+            per project.
+          </li>
+          <li>
+            <strong>One rAF loop.</strong> Never call
+            <code>lenis.raf()</code> from a second loop, and never read layout
+            inside the scroll callback — cache your measurements and refresh on
+            resize.
+          </li>
+          <li>
+            The alternative worth considering is nothing at all. Native scrolling
+            is already smooth on every current platform; the case for Lenis is
+            the <em>eased virtual position</em> other effects can read, not the
+            smoothness itself.
+          </li>
+        </ul>
+      </section>
+    </main>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

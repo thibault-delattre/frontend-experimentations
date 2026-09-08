@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Frontend Experimentations</title>
+    <meta
+      name="description"
+      content="A gallery of modern frontend effects: CSS, canvas, WebGL, WebGPU shaders and motion."
+    />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./src/styles/base.css" />
+    <link rel="stylesheet" href="./src/styles/home.css" />
+  </head>
+  <body>
+    <div class="aurora" aria-hidden="true"></div>
+
+    <header class="hero">
+      <p class="hero__eyebrow">frontend-experimentations</p>
+      <h1 class="hero__title">
+        Every effect worth<br />
+        <span class="hero__grad">stealing</span> in 2026.
+      </h1>
+      <p class="hero__lede">
+        Scroll-driven CSS, view transitions, liquid glass, shaders, WebGPU
+        compute and motion libraries — each one on its own page, self-contained,
+        commented and built to be copy-pasted straight into a project.
+      </p>
+      <nav class="filters" id="filters" aria-label="Filter by category"></nav>
+    </header>
+
+    <main class="grid" id="grid"></main>
+
+    <footer class="foot">
+      <p>
+        Every page lives in <code>demos/&lt;slug&gt;/</code> — one HTML file, one
+        module, one stylesheet. Nothing shared but design tokens.
+      </p>
+    </footer>
+
+    <script type="module" src="./src/home.js"></script>
+  </body>
+</html>

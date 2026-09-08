@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Text Effects Lab — Frontend Experimentations</title>
+    <link rel="stylesheet" href="../../src/styles/base.css" />
+    <style>
+      /* ═══════════════════════════════════════════════════════════════════
+         TEXT EFFECTS LAB
+         Nine headline treatments. Every one is copy-pasteable on its own —
+         the class carries all of its own state.
+         ═══════════════════════════════════════════════════════════════════ */
+
+      .fx {
+        font-size: clamp(2rem, 7vw, 4.2rem);
+        font-weight: 800;
+        letter-spacing: -0.04em;
+        margin: 0;
+        line-height: 1.05;
+        text-align: center;
+      }
+
+      /* 1 ── GRADIENT SHINE ───────────────────────────────────────────
+         A gradient wider than the text, clipped to the glyphs, slid sideways.
+         background-clip: text is the workhorse of half this page. */
+      .fx-shine {
+        background: linear-gradient(
+          100deg,
+          var(--fg-faint) 20%,
+          var(--fg) 40%,
+          white 50%,
+          var(--fg) 60%,
+          var(--fg-faint) 80%
+        );
+        background-size: 250% 100%;
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        animation: shine 4.5s linear infinite;
+      }
+      @keyframes shine { to { background-position: -250% 0; } }
+
+      /* 2 ── SPOTLIGHT FOLLOWING THE POINTER ──────────────────────────
+         Same clip, but the gradient's centre is --mx/--my. Two stacked layers:
+         a dim base and a bright masked copy. */
+      .fx-spot {
+        position: relative;
+        color: var(--bg-2);
+        -webkit-text-stroke: 1px var(--line);
+        cursor: crosshair;
+      }
+      .fx-spot::after {
+        content: attr(data-text);
+        position: absolute;
+        inset: 0;
+        color: transparent;
+        -webkit-text-stroke: 0;
+        background: linear-gradient(100deg, var(--accent), var(--accent-2), var(--accent-3));
+        -webkit-background-clip: text;
+        background-clip: text;
+        /* The reveal: an alpha mask that is a circle at the cursor. */
+        -webkit-mask-image: radial-gradient(
+          140px 140px at var(--mx, -999px) var(--my, -999px),
+          black 0%,
+          transparent 70%
+        );
+        mask-image: radial-gradient(
+          140px 140px at var(--mx, -999px) var(--my, -999px),
+          black 0%,
+          transparent 70%
+        );
+      }
+
+      /* 3 ── OUTLINE FILLING ON HOVER ─────────────────────────────────
+         background-size animated from 0 to 100% with the gradient clipped
+         to the glyphs. No pseudo-element needed. */
+      .fx-fill {
+        color: transparent;
+        -webkit-text-stroke: 1.5px var(--accent);
+        background: linear-gradient(var(--accent), var(--accent));
+        background-size: 0% 100%;
+        background-repeat: no-repeat;
+        -webkit-background-clip: text;
+        background-clip: text;
+        transition: background-size 0.6s var(--ease-out);
+      }
+      .fx-fill:hover { background-size: 100% 100%; }
+
+      /* 4 ── GLITCH ───────────────────────────────────────────────────
+         Two offset copies in red and cyan, each clipped to a shifting
+         horizontal band. `clip-path: inset()` is what sells it. */
+      .fx-glitch { position: relative; color: var(--fg); }
+      .fx-glitch::before,
+      .fx-glitch::after {
+        content: attr(data-text);
+        position: absolute;
+        inset: 0;
+        background: var(--bg-0);
+      }
+      .fx-glitch::before {
+        color: oklch(70% 0.25 20);
+        animation: glitch-a 2.6s steps(2, end) infinite;
+      }
+      .fx-glitch::after {
+        color: oklch(78% 0.2 195);
+        animation: glitch-b 2.1s steps(2, end) infinite;
+      }
+      @keyframes glitch-a {
+        0%, 88%, 100% { clip-path: inset(100% 0 0 0); translate: 0 0; }
+        90%  { clip-path: inset(12% 0 62% 0); translate: -5px 0; }
+        94%  { clip-path: inset(48% 0 28% 0); translate: 4px 0; }
+        97%  { clip-path: inset(70% 0 8% 0); translate: -3px 0; }
+      }
+      @keyframes glitch-b {
+        0%, 85%, 100% { clip-path: inset(100% 0 0 0); translate: 0 0; }
+        88%  { clip-path: inset(30% 0 45% 0); translate: 5px 0; }
+        92%  { clip-path: inset(62% 0 15% 0); translate: -4px 0; }
+        96%  { clip-path: inset(6% 0 78% 0); translate: 3px 0; }
+      }
+
+      /* 5 ── BLUR-IN, PER WORD ────────────────────────────────────────
+         Scroll-driven so it replays both ways. --i comes from main.js. */
+      .fx-blur { display: flex; flex-wrap: wrap; justify-content: center; gap: 0 0.3em; }
+      .fx-blur span { display: inline-block; }
+      @supports (animation-timeline: view()) {
+        .fx-blur span {
+          animation: blur-in linear both;
+          animation-timeline: view();
+          /* Stagger by shifting each word's *range*, not by delay — delays do
+             not exist on a scroll timeline. */
+          animation-range: entry calc(10% + var(--i) * 6%) entry calc(45% + var(--i) * 6%);
+        }
+      }
+      @keyframes blur-in {
+        from { opacity: 0; filter: blur(14px); translate: 0 0.3em; }
+      }
+
+      /* 6 ── NEON ─────────────────────────────────────────────────────
+         Stacked text-shadows at increasing radius. Only works on a dark
+         ground — glow is additive light, and there is nothing to add to on
+         white. */
+      .fx-neon {
+        color: oklch(97% 0.03 200);
+        text-shadow:
+          0 0 4px oklch(85% 0.15 200),
+          0 0 12px oklch(75% 0.2 200),
+          0 0 32px oklch(70% 0.25 200 / 0.8),
+          0 0 72px oklch(65% 0.25 210 / 0.5);
+        animation: flicker 6s infinite;
+      }
+      @keyframes flicker {
+        0%, 92%, 100% { opacity: 1; }
+        93% { opacity: 0.55; }
+        94% { opacity: 1; }
+        96% { opacity: 0.7; }
+      }
+
+      /* 7 ── DUOTONE SPLIT ────────────────────────────────────────────
+         One element, two colours, split by a clip-path on a duplicate. */
+      .fx-split { position: relative; color: var(--fg-faint); }
+      .fx-split::after {
+        content: attr(data-text);
+        position: absolute;
+        inset: 0;
+        color: var(--accent);
+        clip-path: polygon(0 0, 100% 0, 100% 52%, 0 52%);
+        translate: 0 -2px;
+      }
+
+      /* 8 ── SCRAMBLE (JS) ────────────────────────────────────────────
+         The only effect here that genuinely needs JavaScript: the glyphs
+         themselves change. */
+      .fx-scramble { font-family: var(--font-mono); letter-spacing: -0.02em; cursor: pointer; }
+
+      /* 9 ── MASKED VIDEO / GRADIENT THROUGH TEXT ─────────────────────
+         An animated conic gradient behind, visible only through the glyphs. */
+      .fx-window {
+        color: transparent;
+        background: conic-gradient(
+          from var(--a, 0deg),
+          oklch(70% 0.24 20), oklch(72% 0.2 140), oklch(70% 0.22 260), oklch(70% 0.24 20)
+        );
+        -webkit-background-clip: text;
+        background-clip: text;
+        animation: spin-hue 8s linear infinite;
+      }
+      @property --a {
+        syntax: '<angle>';
+        inherits: false;
+        initial-value: 0deg;
+      }
+      @keyframes spin-hue { to { --a: 360deg; } }
+
+      /* --- Layout ------------------------------------------------------ */
+      main { max-width: 1000px; margin: 0 auto; padding: 0 var(--pad) 8rem; }
+      .demo {
+        margin: 0 0 1rem;
+        padding: 3.5rem 1.5rem;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: var(--bg-1);
+        display: grid;
+        gap: 1rem;
+        overflow: hidden;
+      }
+      .demo__label {
+        font-family: var(--font-mono);
+        font-size: 0.7rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--fg-faint);
+        text-align: center;
+      }
+      .demo__hint { text-align: center; font-size: 0.82rem; color: var(--fg-dim); margin: 0; }
+    </style>
+  </head>
+  <body>
+    <div class="note">
+      <h1>Text Effects Lab</h1>
+      <p>
+        Nine reusable headline treatments. Eight are pure CSS; the ninth needs
+        JavaScript because it changes the characters themselves. Read the
+        <code>&lt;style&gt;</code> block — each effect is one self-contained
+        class.
+      </p>
+    </div>
+
+    <main>
+      <div class="demo">
+        <p class="demo__label">01 · gradient shine</p>
+        <h2 class="fx fx-shine">CONTINUOUS</h2>
+      </div>
+
+      <div class="demo">
+        <p class="demo__label">02 · pointer spotlight — mask-image</p>
+        <h2 class="fx fx-spot" data-text="SPOTLIGHT" data-pointer>SPOTLIGHT</h2>
+        <p class="demo__hint">move across it</p>
+      </div>
+
+      <div class="demo">
+        <p class="demo__label">03 · outline filling on hover</p>
+        <h2 class="fx fx-fill">HOVER ME</h2>
+      </div>
+
+      <div class="demo">
+        <p class="demo__label">04 · glitch — clip-path bands</p>
+        <h2 class="fx fx-glitch" data-text="CORRUPTED">CORRUPTED</h2>
+      </div>
+
+      <div class="demo">
+        <p class="demo__label">05 · per-word blur-in, scroll-driven</p>
+        <h2 class="fx fx-blur" data-words>Each word arrives on its own range</h2>
+      </div>
+
+      <div class="demo">
+        <p class="demo__label">06 · neon</p>
+        <h2 class="fx fx-neon">OPEN LATE</h2>
+      </div>
+
+      <div class="demo">
+        <p class="demo__label">07 · duotone split</p>
+        <h2 class="fx fx-split" data-text="BISECTED">BISECTED</h2>
+      </div>
+
+      <div class="demo">
+        <p class="demo__label">08 · scramble (javascript)</p>
+        <h2 class="fx fx-scramble" data-scramble="DECRYPTING">DECRYPTING</h2>
+        <p class="demo__hint">hover to re-run</p>
+      </div>
+
+      <div class="demo">
+        <p class="demo__label">09 · animated gradient through the glyphs</p>
+        <h2 class="fx fx-window">APERTURE</h2>
+        <p class="demo__hint">
+          <code>@property</code> registers <code>--a</code> as an
+          <code>&lt;angle&gt;</code>, which is what makes a custom property
+          interpolatable at all
+        </p>
+      </div>
+    </main>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

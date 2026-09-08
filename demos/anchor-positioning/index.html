@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Anchor Positioning — Frontend Experimentations</title>
+    <link rel="stylesheet" href="../../src/styles/base.css" />
+    <style>
+      /* ═══════════════════════════════════════════════════════════════════
+         CSS ANCHOR POSITIONING
+
+         Replaces Popper/Floating-UI for the common cases. Three pieces:
+
+           anchor-name: --x         on the trigger
+           position-anchor: --x     on the floating element
+           anchor(<side>)           reads the anchor's box in any length slot
+
+         Plus position-try-fallbacks, which lets the browser retry a list of
+         alternative placements when the first one overflows the viewport.
+         Requires position: absolute or fixed on the floating element.
+         ═══════════════════════════════════════════════════════════════════ */
+
+      /* 1 ── TOOLTIP THAT FLIPS ───────────────────────────────────────── */
+      .anchored {
+        anchor-name: --trigger;
+      }
+
+      .tip {
+        position: fixed;
+        position-anchor: --trigger;
+
+        /* Default placement: above, horizontally centred.
+           position-area is the shorthand — a 3×3 grid around the anchor. */
+        position-area: block-start center;
+        margin-bottom: 8px;
+
+        /* If "above" overflows, try below, then right, then left. */
+        position-try-fallbacks: flip-block, flip-inline, block-end span-inline-start;
+
+        /* Never wider than the space actually available. */
+        max-width: min(28ch, anchor-size(width) * 4);
+        width: max-content;
+
+        margin: 0 0 8px;
+        padding: 0.5rem 0.75rem;
+        background: var(--bg-2);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-sm);
+        font-size: 0.85rem;
+        color: var(--fg);
+        box-shadow: 0 10px 30px oklch(0% 0 0 / 0.5);
+      }
+
+      /* Popover state animation needs @starting-style + allow-discrete,
+         otherwise there is no "from" frame to animate out of. */
+      [popover] {
+        opacity: 0;
+        translate: 0 6px;
+        transition: opacity 0.18s, translate 0.18s, overlay 0.18s allow-discrete,
+          display 0.18s allow-discrete;
+      }
+      [popover]:popover-open {
+        opacity: 1;
+        translate: 0 0;
+      }
+      @starting-style {
+        [popover]:popover-open {
+          opacity: 0;
+          translate: 0 6px;
+        }
+      }
+
+      /* 2 ── DROPDOWN MATCHING ITS TRIGGER'S WIDTH ────────────────────── */
+      .select {
+        anchor-name: --select;
+      }
+      .menu {
+        position: fixed;
+        position-anchor: --select;
+        position-area: block-end span-inline-end;
+        /* anchor-size() reads the anchor's dimensions — a menu exactly as wide
+           as the button, with no ResizeObserver. */
+        width: anchor-size(width);
+        margin-top: 6px;
+        position-try-fallbacks: flip-block;
+        padding: 0.35rem;
+        background: var(--bg-2);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-sm);
+      }
+      .menu button {
+        display: block;
+        width: 100%;
+        text-align: left;
+        background: none;
+        border: 0;
+        color: var(--fg);
+        font: inherit;
+        font-size: 0.88rem;
+        padding: 0.45rem 0.6rem;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+      .menu button:hover {
+        background: var(--accent-soft);
+      }
+
+      /* 3 ── CONNECTOR LINES ──────────────────────────────────────────── */
+      /* An absolutely positioned box can span *between* two anchors by taking
+         its edges from different anchor() calls. */
+      .callout {
+        position: absolute;
+        position-anchor: --spot;
+        left: calc(anchor(right) + 12px);
+        top: anchor(center);
+        translate: 0 -50%;
+        width: max-content;
+        max-width: 22ch;
+        padding: 0.5rem 0.8rem;
+        font-size: 0.82rem;
+        border-left: 2px solid var(--accent);
+        color: var(--fg-dim);
+        position-try-fallbacks: --left-side;
+      }
+      @position-try --left-side {
+        left: auto;
+        right: calc(anchor(left) + 12px);
+        border-left: 0;
+        border-right: 2px solid var(--accent);
+        text-align: right;
+      }
+
+      /* --- Page furniture --------------------------------------------- */
+      main {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 0 var(--pad) 8rem;
+      }
+      section {
+        margin: 3.5rem 0;
+      }
+      h2 {
+        font-size: 1.3rem;
+      }
+      .lead {
+        color: var(--fg-dim);
+        max-width: 64ch;
+      }
+      .pad {
+        border: 1px dashed var(--line);
+        border-radius: var(--radius);
+        height: 320px;
+        overflow: auto;
+        padding: 140px 1rem;
+        background: var(--bg-1);
+        position: relative;
+      }
+      .pad p {
+        color: var(--fg-faint);
+        font-size: 0.85rem;
+        margin: 0 0 120px;
+      }
+      .trigger {
+        font: inherit;
+        font-size: 0.9rem;
+        background: var(--bg-2);
+        color: var(--fg);
+        border: 1px solid var(--line);
+        border-radius: 100px;
+        padding: 0.45rem 1rem;
+        cursor: pointer;
+      }
+      .spot {
+        anchor-name: --spot;
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: var(--accent);
+        box-shadow: 0 0 0 6px var(--accent-soft);
+      }
+      .drag-area {
+        position: relative;
+        height: 260px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: var(--bg-1);
+        overflow: hidden;
+      }
+      .draggable {
+        position: absolute;
+        left: 40%;
+        top: 45%;
+        cursor: grab;
+        touch-action: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="note">
+      <h1>Anchor Positioning</h1>
+      <p>
+        Tether a floating element to a trigger, size it from the trigger's box,
+        and let the browser <strong>retry alternative placements</strong> when it
+        would overflow — all in CSS. This is the feature that removes a
+        positioning library from most projects.
+      </p>
+    </div>
+
+    <main>
+      <section>
+        <h2>1 · Tooltip that flips at the edge</h2>
+        <p class="lead">
+          Scroll inside the dashed box. The tooltip prefers to sit above; when
+          there is no room it flips below via
+          <code>position-try-fallbacks: flip-block</code>.
+        </p>
+        <div class="pad">
+          <p>↓ scroll me ↓</p>
+          <button
+            class="trigger anchored"
+            popovertarget="tip1"
+            type="button"
+          >
+            Hover or click me
+          </button>
+          <div class="tip" popover id="tip1">
+            I keep myself in view. No scroll listener, no resize observer, no
+            <code>getBoundingClientRect</code>.
+          </div>
+          <p style="margin-top: 120px">↑ and back up ↑</p>
+        </div>
+      </section>
+
+      <section>
+        <h2>2 · Menu sized from its trigger</h2>
+        <p class="lead">
+          <code>width: anchor-size(width)</code> makes the panel exactly as wide
+          as the button it belongs to, at any breakpoint.
+        </p>
+        <button class="trigger select" popovertarget="menu1" type="button" style="min-width: 240px">
+          Choose a rendering backend ▾
+        </button>
+        <div class="menu" popover id="menu1">
+          <button type="button">WebGPU (preferred)</button>
+          <button type="button">WebGL 2</button>
+          <button type="button">Canvas 2D</button>
+          <button type="button">CSS only</button>
+        </div>
+      </section>
+
+      <section>
+        <h2>3 · A label that follows a moving anchor</h2>
+        <p class="lead">
+          Drag the dot. The callout re-anchors every frame with no JavaScript
+          involved in the positioning, and swaps to the other side via a named
+          <code>@position-try</code> block when it runs out of room.
+        </p>
+        <div class="drag-area">
+          <span class="spot draggable" id="dot" role="slider" tabindex="0" aria-label="Draggable anchor"></span>
+          <div class="callout">
+            Positioned entirely by <code>anchor()</code> — drag me to the right
+            edge and watch the fallback fire.
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Notes</h2>
+        <ul class="lead">
+          <li>Only works on <code>position: absolute</code> / <code>fixed</code>.</li>
+          <li>
+            Combine with the <strong>Popover API</strong>
+            (<code>popovertarget</code>) to get top-layer stacking, light-dismiss
+            and focus management for free — no z-index war.
+          </li>
+          <li>
+            Animate open/close with <code>@starting-style</code> and
+            <code>transition-behavior: allow-discrete</code>, since popovers
+            toggle <code>display</code>.
+          </li>
+          <li>
+            Safari support is still partial as of 2026 — treat it as progressive
+            enhancement, or keep a small JS fallback behind
+            <code>@supports not (anchor-name: --a)</code>.
+          </li>
+        </ul>
+      </section>
+    </main>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

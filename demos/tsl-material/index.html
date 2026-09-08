@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TSL Node Materials — Frontend Experimentations</title>
+    <link rel="stylesheet" href="../../src/styles/base.css" />
+    <style>
+      .stage { position: relative; height: 80vh; min-height: 480px; border-block: 1px solid var(--line); }
+      canvas { width: 100%; height: 100%; }
+      .hud {
+        position: absolute; left: var(--pad); top: var(--pad);
+        display: grid; gap: 0.5rem; padding: 0.9rem 1rem;
+        border-radius: var(--radius); border: 1px solid var(--line);
+        background: color-mix(in oklch, var(--bg-1) 82%, transparent);
+        backdrop-filter: blur(12px); font-size: 0.78rem; min-width: 240px;
+      }
+      .hud label { display: grid; grid-template-columns: 4.6rem 1fr 3rem; gap: 0.5rem; align-items: center; color: var(--fg-dim); }
+      .hud input[type='range'] { width: 100%; accent-color: var(--accent); }
+      .hud output { font-family: var(--font-mono); color: var(--accent-2); text-align: right; }
+      .chips { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+      .chips button {
+        font: inherit; font-size: 0.75rem; background: var(--bg-2); color: var(--fg-dim);
+        border: 1px solid var(--line); border-radius: 100px; padding: 0.25rem 0.7rem; cursor: pointer;
+      }
+      .chips button[aria-pressed='true'] { background: var(--fg); color: var(--bg-0); border-color: var(--fg); }
+      .backend {
+        position: absolute; right: var(--pad); top: var(--pad);
+        font-family: var(--font-mono); font-size: 0.72rem; color: var(--fg-faint);
+        border: 1px solid var(--line); border-radius: 100px; padding: 0.25rem 0.7rem;
+        background: color-mix(in oklch, var(--bg-1) 80%, transparent); backdrop-filter: blur(8px);
+      }
+      main { max-width: 900px; margin: 0 auto; padding: 3rem var(--pad) 6rem; }
+      h2 { font-size: 1.25rem; }
+      .lead { color: var(--fg-dim); max-width: 66ch; }
+      pre { overflow-x: auto; background: var(--bg-1); border: 1px solid var(--line); border-radius: var(--radius); padding: 1rem; font-size: 0.8rem; }
+      table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin: 1rem 0; }
+      td, th { text-align: left; padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+      th { color: var(--fg-faint); font-weight: 500; font-family: var(--font-mono); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; }
+      td:first-child { font-family: var(--font-mono); color: var(--accent-2); white-space: nowrap; }
+    </style>
+  </head>
+  <body>
+    <div class="note">
+      <h1>TSL Node Materials</h1>
+      <p>
+        <strong>Three Shading Language</strong> — shaders written as chained
+        JavaScript nodes rather than GLSL strings. The same source compiles to
+        WGSL on WebGPU and GLSL on WebGL, so one material runs on both with no
+        branching in your code.
+      </p>
+    </div>
+
+    <div class="stage">
+      <canvas id="c"></canvas>
+      <div class="backend" id="backend">detecting…</div>
+      <div class="hud">
+        <div class="chips" id="materials"></div>
+        <label>noise <input type="range" id="freq" min="10" max="400" value="150" /><output id="freq-out"></output></label>
+        <label>displace <input type="range" id="disp" min="0" max="100" value="35" /><output id="disp-out"></output></label>
+        <label>speed <input type="range" id="speed" min="0" max="200" value="60" /><output id="speed-out"></output></label>
+        <div class="chips">
+          <button type="button" id="wire" aria-pressed="false">wireframe</button>
+          <button type="button" id="spin" aria-pressed="true">auto-rotate</button>
+        </div>
+      </div>
+    </div>
+
+    <main>
+      <h2>What a node graph looks like</h2>
+      <p class="lead">
+        Instead of assigning a string of GLSL, you assign an expression tree to a
+        specific slot on the material. Three.js compiles the graph into whatever
+        the active backend speaks.
+      </p>
+      <pre><code>import { MeshStandardNodeMaterial } from 'three/webgpu';
+import { time, positionLocal, normalLocal, mx_noise_float,
+         vec3, mix, uniform } from 'three/tsl';
+
+const speed = uniform(0.6);                     // live-updatable from JS
+
+const n = mx_noise_float(
+  positionLocal.mul(4).add(time.mul(speed))     // sample a moving 3D noise field
+);
+
+const material = new MeshStandardNodeMaterial();
+
+// Vertex stage: push each vertex along its normal by the noise value.
+material.positionNode = positionLocal.add(normalLocal.mul(n).mul(0.3));
+
+// Fragment stage: blend two colours by the same noise value.
+material.colorNode     = mix(vec3(0.1, 0.3, 0.9), vec3(1.0, 0.4, 0.1), n);
+material.roughnessNode = n.oneMinus().mul(0.8);
+material.emissiveNode  = vec3(0.2, 0.5, 1.0).mul(n.pow(4));</code></pre>
+
+      <h2>The slots</h2>
+      <table>
+        <tr><th>node</th><th>stage</th><th>what it replaces</th></tr>
+        <tr><td>positionNode</td><td>vertex</td><td>the vertex position, in local space</td></tr>
+        <tr><td>normalNode</td><td>vertex/frag</td><td>the shading normal</td></tr>
+        <tr><td>colorNode</td><td>fragment</td><td>base colour / albedo</td></tr>
+        <tr><td>roughnessNode<br />metalnessNode</td><td>fragment</td><td>PBR surface parameters</td></tr>
+        <tr><td>emissiveNode</td><td>fragment</td><td>light emitted by the surface</td></tr>
+        <tr><td>opacityNode</td><td>fragment</td><td>alpha (set <code>transparent</code> too)</td></tr>
+        <tr><td>outputNode</td><td>fragment</td><td>the final colour, after lighting</td></tr>
+      </table>
+
+      <h2>Why bother</h2>
+      <ul class="lead">
+        <li>
+          <strong>One source, two backends.</strong> No dual GLSL/WGSL
+          maintenance, and no <code>#ifdef</code> soup.
+        </li>
+        <li>
+          <strong>You keep the PBR pipeline.</strong> A raw
+          <code>ShaderMaterial</code> means reimplementing lighting, shadows,
+          tone mapping and fog. A node material lets you replace exactly the one
+          slot you care about and inherit the rest.
+        </li>
+        <li>
+          <strong>Uniforms are real objects.</strong>
+          <code>uniform(0.6)</code> returns a node with a
+          <code>.value</code> you set from JavaScript — no location lookups.
+        </li>
+        <li>
+          <strong>It composes.</strong> Nodes are values; you can factor a
+          fragment of shading into a function with <code>Fn()</code> and reuse it
+          across materials.
+        </li>
+      </ul>
+
+      <h2>Gotcha: displacement breaks lighting</h2>
+      <p class="lead">
+        Moving vertices in <code>positionNode</code> does <em>not</em> update the
+        normals, so a displaced surface lights as if it were still smooth. Either
+        recompute normals from the noise gradient (three samples and two cross
+        products) or accept the softer look — for organic blobs the flat-shaded
+        result often reads better anyway.
+      </p>
+    </main>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

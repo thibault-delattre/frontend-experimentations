@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GPU Compute Particles — Frontend Experimentations</title>
+    <link rel="stylesheet" href="../../src/styles/base.css" />
+    <style>
+      .stage { position: relative; height: 82vh; min-height: 500px; border-block: 1px solid var(--line); background: #04040a; }
+      canvas { width: 100%; height: 100%; }
+      .hud {
+        position: absolute; left: var(--pad); bottom: var(--pad);
+        display: grid; gap: 0.5rem; padding: 0.9rem 1rem;
+        border-radius: var(--radius); border: 1px solid var(--line);
+        background: color-mix(in oklch, var(--bg-1) 82%, transparent);
+        backdrop-filter: blur(12px); font-size: 0.78rem; min-width: 260px;
+      }
+      .hud label { display: grid; grid-template-columns: 4.8rem 1fr 3.2rem; gap: 0.5rem; align-items: center; color: var(--fg-dim); }
+      .hud input[type='range'] { width: 100%; accent-color: var(--accent); }
+      .hud output { font-family: var(--font-mono); color: var(--accent-2); text-align: right; }
+      .chips { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+      .chips button {
+        font: inherit; font-size: 0.75rem; background: var(--bg-2); color: var(--fg-dim);
+        border: 1px solid var(--line); border-radius: 100px; padding: 0.25rem 0.7rem; cursor: pointer;
+      }
+      .chips button[aria-pressed='true'] { background: var(--fg); color: var(--bg-0); border-color: var(--fg); }
+      .stat {
+        position: absolute; right: var(--pad); top: var(--pad); text-align: right;
+        font-family: var(--font-mono); font-size: 0.72rem; color: var(--fg-faint); line-height: 1.7;
+      }
+      .stat b { color: var(--accent-2); font-weight: 500; }
+      main { max-width: 900px; margin: 0 auto; padding: 3rem var(--pad) 6rem; }
+      h2 { font-size: 1.25rem; }
+      .lead { color: var(--fg-dim); max-width: 66ch; }
+      pre { overflow-x: auto; background: var(--bg-1); border: 1px solid var(--line); border-radius: var(--radius); padding: 1rem; font-size: 0.8rem; }
+    </style>
+  </head>
+  <body>
+    <div class="note">
+      <h1>GPU Compute Particles</h1>
+      <p>
+        A quarter of a million particles, integrated entirely in a
+        <strong>WebGPU compute shader</strong>. Positions and velocities live in
+        GPU storage buffers and are never read back — the CPU's only job per
+        frame is to dispatch and draw.
+      </p>
+    </div>
+
+    <div class="stage">
+      <canvas id="c"></canvas>
+      <div class="stat" id="stat"></div>
+      <div class="hud">
+        <div class="chips" id="modes"></div>
+        <label>count <input type="range" id="count" min="1" max="8" value="5" /><output id="count-out"></output></label>
+        <label>force <input type="range" id="force" min="0" max="200" value="80" /><output id="force-out"></output></label>
+        <label>damping <input type="range" id="damp" min="80" max="100" value="96" /><output id="damp-out"></output></label>
+        <label>size <input type="range" id="size" min="1" max="40" value="6" /><output id="size-out"></output></label>
+        <div class="chips">
+          <button type="button" id="reset">respawn</button>
+          <button type="button" id="attract" aria-pressed="true">pointer attracts</button>
+        </div>
+      </div>
+    </div>
+
+    <main>
+      <h2>The compute pipeline</h2>
+      <p class="lead">
+        Two storage buffers and two kernels. One kernel seeds the buffers once;
+        the other advances them every frame. Neither ever touches JavaScript.
+      </p>
+      <pre><code>import { instancedArray, Fn, instanceIndex, hash, deltaTime } from 'three/tsl';
+
+// 1 · STATE — allocated on the GPU, never mapped back to the CPU.
+const positions  = instancedArray(COUNT, 'vec3');
+const velocities = instancedArray(COUNT, 'vec3');
+
+// 2 · INIT — one invocation per particle, dispatched once.
+const init = Fn(() => {
+  const p = positions.element(instanceIndex);
+  p.assign(vec3(hash(instanceIndex), hash(instanceIndex.add(1)), …).sub(0.5).mul(8));
+})().compute(COUNT);
+await renderer.computeAsync(init);
+
+// 3 · UPDATE — dispatched once per frame, before the draw.
+const update = Fn(() => {
+  const p = positions.element(instanceIndex);
+  const v = velocities.element(instanceIndex);
+  v.addAssign(curl(p).mul(deltaTime));          // the whole simulation
+  v.mulAssign(damping);
+  p.addAssign(v.mul(deltaTime));
+})().compute(COUNT);
+
+// 4 · DRAW — the render material reads the same buffer as a vertex attribute.
+material.positionNode = positions.toAttribute();</code></pre>
+
+      <h2>Why this is a different order of magnitude</h2>
+      <ul class="lead">
+        <li>
+          <strong>No round trip.</strong> A CPU particle system must write every
+          position into a buffer and upload it each frame. At 250k particles
+          that is 3&nbsp;MB of bus traffic per frame, before any maths. Here the
+          data is already where it is needed.
+        </li>
+        <li>
+          <strong>Genuine parallelism.</strong> The dispatch runs in workgroups
+          across every compute unit at once. The same integration loop that
+          takes ~30ms on one JavaScript thread finishes in under 2ms.
+        </li>
+        <li>
+          <strong>WebGPU only.</strong> WebGL2 has no compute stage. The
+          historical workaround is "ping-pong" rendering — encode state into a
+          float texture, render to another, swap — which still works but is
+          awkward and limited to what a fragment shader can express.
+        </li>
+      </ul>
+
+      <h2>The force fields</h2>
+      <ul class="lead">
+        <li>
+          <strong>Curl noise</strong> — take the curl of a noise vector field.
+          Because a curl is divergence-free by construction, particles swirl
+          without ever bunching up or thinning out. This is the standard field
+          for smoke, dust and magic.
+        </li>
+        <li>
+          <strong>Attractor</strong> — the Lorenz system, integrated per
+          particle. Each one traces the same strange attractor from a different
+          starting point.
+        </li>
+        <li>
+          <strong>Vortex</strong> — tangential force around an axis with radial
+          falloff, plus gravity toward the plane.
+        </li>
+        <li>
+          <strong>Gravity wells</strong> — inverse-square attraction to a few
+          moving points, softened at the core so nothing goes to infinity.
+        </li>
+      </ul>
+
+      <h2>Additive blending, no depth write</h2>
+      <p class="lead">
+        Particle systems are painted with <code>AdditiveBlending</code> and
+        <code>depthWrite: false</code>. Overlapping particles then sum toward
+        white, which is what light actually does, and there is no sorting problem
+        because addition is commutative.
+      </p>
+    </main>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

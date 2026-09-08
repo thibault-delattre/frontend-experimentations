@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Image Displacement — Frontend Experimentations</title>
+    <link rel="stylesheet" href="../../src/styles/base.css" />
+    <style>
+      .stage {
+        position: relative;
+        aspect-ratio: 16 / 9;
+        max-width: 1100px;
+        margin: 0 auto;
+        border-radius: var(--radius);
+        overflow: hidden;
+        border: 1px solid var(--line);
+        cursor: none;
+      }
+      canvas { width: 100%; height: 100%; }
+      .cursor {
+        position: absolute;
+        width: 46px; height: 46px;
+        border: 1px solid oklch(100% 0 0 / 0.7);
+        border-radius: 50%;
+        translate: -50% -50%;
+        pointer-events: none;
+        transition: scale 0.25s var(--ease-out), opacity 0.25s;
+        opacity: 0;
+        mix-blend-mode: difference;
+      }
+      .stage:hover .cursor { opacity: 1; }
+      .stage:active .cursor { scale: 1.7; }
+
+      .dots {
+        position: absolute; bottom: 1rem; left: 50%; translate: -50% 0;
+        display: flex; gap: 0.5rem;
+      }
+      .dots button {
+        width: 34px; height: 4px; border: 0; border-radius: 4px; padding: 0;
+        background: oklch(100% 0 0 / 0.3); cursor: pointer;
+      }
+      .dots button[aria-pressed='true'] { background: white; }
+
+      .controls {
+        max-width: 1100px; margin: 1.2rem auto 0;
+        display: flex; gap: 1.4rem; flex-wrap: wrap; align-items: center;
+        font-size: 0.8rem; color: var(--fg-dim);
+      }
+      .controls label { display: flex; gap: 0.6rem; align-items: center; }
+      .controls input { accent-color: var(--accent); width: 150px; }
+      .controls output { font-family: var(--font-mono); color: var(--accent-2); min-width: 3ch; }
+      .controls select {
+        font: inherit; font-size: 0.8rem; background: var(--bg-2); color: var(--fg);
+        border: 1px solid var(--line); border-radius: 100px; padding: 0.3rem 0.8rem;
+      }
+
+      main { max-width: 900px; margin: 0 auto; padding: 3.5rem var(--pad) 6rem; }
+      h2 { font-size: 1.25rem; }
+      .lead { color: var(--fg-dim); max-width: 64ch; }
+      pre { overflow-x: auto; background: var(--bg-1); border: 1px solid var(--line); border-radius: var(--radius); padding: 1rem; font-size: 0.8rem; }
+      .wrap { padding: 0 var(--pad); }
+    </style>
+  </head>
+  <body>
+    <div class="note">
+      <h1>Image Displacement</h1>
+      <p>
+        The award-site transition, from scratch:
+        <strong>hover and drag</strong> to push the pixels around, click a dot
+        to cross-dissolve through a noise map with chromatic separation. Raw
+        WebGL2, no library.
+      </p>
+    </div>
+
+    <div class="wrap">
+      <div class="stage" id="stage">
+        <canvas id="gl"></canvas>
+        <div class="cursor" id="cursor"></div>
+        <div class="dots" id="dots"></div>
+      </div>
+
+      <div class="controls">
+        <label>
+          displacement
+          <input type="range" id="amount" min="0" max="200" value="70" />
+          <output id="amount-out"></output>
+        </label>
+        <label>
+          rgb split
+          <input type="range" id="split" min="0" max="100" value="30" />
+          <output id="split-out"></output>
+        </label>
+        <label>
+          transition
+          <select id="mode">
+            <option value="0">noise dissolve</option>
+            <option value="1">directional wipe</option>
+            <option value="2">radial burst</option>
+            <option value="3">pixel melt</option>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    <main>
+      <h2>What the fragment shader actually does</h2>
+      <p class="lead">
+        Three ideas stack on top of each other. Each one is two or three lines.
+      </p>
+      <pre><code>// 1 · DISPLACE — offset the lookup coordinate by a value read from a map.
+//     The map is a texture; its red channel becomes an x/y push.
+float d = texture(u_disp, uv).r;
+vec2 uvA = uv + normal * (d - 0.5) * strength;
+
+// 2 · SPLIT — sample the three channels at slightly different offsets.
+//     This is chromatic aberration: it reads as "lens", not as "glitch".
+float r = texture(u_tex, uvA + dir * s * 1.0).r;
+float g = texture(u_tex, uvA                ).g;
+float b = texture(u_tex, uvA - dir * s * 1.0).b;
+
+// 3 · DISSOLVE — compare the map against the transition progress to get a
+//     per-pixel threshold, so the two images tear into each other instead of
+//     fading uniformly.
+float m = smoothstep(d - 0.08, d + 0.08, progress);
+color = mix(colorA, colorB, m);</code></pre>
+
+      <h2>Details worth copying</h2>
+      <ul class="lead">
+        <li>
+          <strong>Cover, not stretch.</strong> Images almost never match the
+          canvas aspect. The shader computes a <code>cover</code> UV transform
+          from the two aspect ratios — the same maths as
+          <code>object-fit: cover</code>, done once in the vertex stage.
+        </li>
+        <li>
+          <strong>Lerp the pointer, don't read it raw.</strong> The displacement
+          centre eases toward the true pointer position each frame
+          (<code>p += (target - p) * 0.08</code>). That single line is the
+          difference between "expensive" and "twitchy".
+        </li>
+        <li>
+          <strong>Keep the displacement map low frequency.</strong> High
+          frequency noise in a displacement map produces sparkle and aliasing;
+          blur it, or generate it as smooth fbm as this demo does.
+        </li>
+        <li>
+          <strong>Premultiply nothing, but do set</strong>
+          <code>UNPACK_FLIP_Y_WEBGL</code> — WebGL's texture origin is
+          bottom-left and every image you load is top-left. Forgetting it is the
+          classic upside-down-texture bug.
+        </li>
+      </ul>
+
+      <h2>Textures here are procedural</h2>
+      <p class="lead">
+        So this page stays dependency- and asset-free, the four "photographs"
+        are painted into a canvas at load time and uploaded as textures. Swap
+        <code>makeSlide()</code> for an <code>&lt;img&gt;</code> load and
+        everything else is unchanged.
+      </p>
+    </main>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

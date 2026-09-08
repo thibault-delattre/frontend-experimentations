@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Scroll-Driven Animations — Frontend Experimentations</title>
+    <link rel="stylesheet" href="../../src/styles/base.css" />
+    <style>
+      /* ═══════════════════════════════════════════════════════════════════
+         SCROLL-DRIVEN ANIMATIONS — no JavaScript anywhere on this page.
+
+         Two timelines replace every scroll listener you have ever written:
+           scroll()  → progress of a scroll *container*   (0 = top, 1 = bottom)
+           view()    → progress of *this element* through the scrollport
+
+         Everything is wrapped in @supports so browsers without it simply get
+         the finished state instead of content stuck at opacity: 0.
+         ═══════════════════════════════════════════════════════════════════ */
+
+      /* 1 ── READING PROGRESS BAR ─────────────────────────────────────────
+         animation-timeline: scroll() binds to the nearest scrollable ancestor
+         in the block axis — here, the root scroller. */
+      .progress {
+        position: fixed;
+        inset: 0 0 auto;
+        height: 3px;
+        z-index: 200;
+        background: linear-gradient(90deg, var(--accent), var(--accent-2), var(--accent-3));
+        transform-origin: 0 50%;
+        scale: 0 1;
+      }
+      @supports (animation-timeline: scroll()) {
+        .progress {
+          animation: grow linear both;
+          animation-timeline: scroll(root block);
+        }
+      }
+      @keyframes grow {
+        to {
+          scale: 1 1;
+        }
+      }
+
+      /* 2 ── REVEAL ON ENTER ──────────────────────────────────────────────
+         view() measures this element against the scrollport. animation-range
+         picks the slice of that pass to animate over:
+           entry 0%   → the element's leading edge touches the scrollport
+           entry 100% → the element is fully inside
+         `cover`, `exit` and `contain` name the other phases. */
+      .reveal {
+        animation: reveal linear both;
+        animation-timeline: view();
+        animation-range: entry 5% entry 60%;
+      }
+      @keyframes reveal {
+        from {
+          opacity: 0;
+          transform: translateY(48px) scale(0.96);
+          filter: blur(6px);
+        }
+      }
+
+      /* 3 ── PARALLAX LAYERS ──────────────────────────────────────────────
+         Same timeline, different distances. The `cover` range runs the whole
+         time any part of the element is visible, which is what you want for
+         a background that should never stop drifting. */
+      .parallax {
+        position: relative;
+        height: 80vh;
+        border-radius: var(--radius);
+        overflow: clip; /* clip, not hidden: keeps the scroll timeline intact */
+        border: 1px solid var(--line);
+        display: grid;
+        place-items: center;
+      }
+      .parallax__layer {
+        position: absolute;
+        inset: -20% 0;
+        animation: rise linear both;
+        animation-timeline: view();
+        animation-range: cover;
+      }
+      .parallax__layer:nth-child(1) {
+        background: radial-gradient(60% 50% at 30% 40%, oklch(45% 0.2 275 / 0.9), transparent);
+        --shift: 8%;
+      }
+      .parallax__layer:nth-child(2) {
+        background: radial-gradient(50% 40% at 72% 60%, oklch(50% 0.2 190 / 0.8), transparent);
+        --shift: 18%;
+      }
+      .parallax__layer:nth-child(3) {
+        background: radial-gradient(40% 30% at 50% 80%, oklch(55% 0.24 330 / 0.7), transparent);
+        --shift: 30%;
+      }
+      @keyframes rise {
+        from {
+          translate: 0 var(--shift);
+        }
+        to {
+          translate: 0 calc(var(--shift) * -1);
+        }
+      }
+      .parallax h2 {
+        position: relative;
+        font-size: clamp(2rem, 7vw, 4.5rem);
+        mix-blend-mode: overlay;
+      }
+
+      /* 4 ── HORIZONTAL SCROLL WITH ITS OWN NAMED TIMELINE ────────────────
+         scroll-timeline-name declares a timeline on a scroller; any element
+         can then attach to it by name, even outside the subtree. */
+      .rail {
+        overflow-x: auto;
+        scroll-timeline: --rail x;
+        display: flex;
+        gap: 1rem;
+        padding: 1rem 0 1.4rem;
+        scroll-snap-type: x mandatory;
+        overscroll-behavior-x: contain;
+      }
+      .rail__item {
+        flex: 0 0 min(62vw, 300px);
+        aspect-ratio: 4 / 3;
+        scroll-snap-align: center;
+        border-radius: var(--radius);
+        display: grid;
+        place-items: center;
+        font-size: 2.5rem;
+        font-weight: 700;
+        background: var(--bg-2);
+        border: 1px solid var(--line);
+        /* view() inside a horizontal scroller uses that scroller's axis. */
+        animation: pop linear both;
+        animation-timeline: view(x);
+        animation-range: entry 20% cover 40%;
+      }
+      @keyframes pop {
+        from {
+          opacity: 0.15;
+          scale: 0.82;
+          filter: grayscale(1);
+        }
+      }
+      .rail__meter {
+        height: 4px;
+        border-radius: 4px;
+        background: var(--accent);
+        transform-origin: 0 50%;
+        scale: 0 1;
+        animation: grow linear both;
+        animation-timeline: --rail; /* attached by name, from outside the rail */
+      }
+
+      /* 5 ── STICKY SCROLLYTELLING ────────────────────────────────────────
+         A tall track holds a sticky stage; the *track's* view() progress drives
+         what the stage shows. This is the pattern behind every "product spins
+         as you scroll" page. */
+      .track {
+        height: 300vh;
+        position: relative;
+      }
+      .stage {
+        position: sticky;
+        top: 12vh;
+        height: 76vh;
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: var(--bg-1);
+        overflow: clip;
+      }
+      .cube {
+        width: min(38vmin, 260px);
+        aspect-ratio: 1;
+        border-radius: 22%;
+        background: conic-gradient(from 0deg, var(--accent), var(--accent-2), var(--accent-3), var(--accent));
+        animation: spin linear both;
+        animation-timeline: view(root);
+        animation-range: contain;
+      }
+      @keyframes spin {
+        from {
+          rotate: 0deg;
+          scale: 0.5;
+          border-radius: 50%;
+        }
+        to {
+          rotate: 220deg;
+          scale: 1.1;
+          border-radius: 12%;
+        }
+      }
+
+      /* 6 ── SCROLL-TRIGGERED (not scroll-linked) ─────────────────────────
+         Newer than the above: animation-trigger fires a *normal* time-based
+         animation when a range is entered, instead of scrubbing it. Progressive
+         enhancement only — the element is already visible without it. */
+      @supports (animation-trigger: --t play-forwards) {
+        .triggered {
+          animation: nudge 0.7s var(--ease-out) both;
+          animation-trigger: view() play-forwards play-backwards;
+          animation-trigger-range: entry 30% entry 80%;
+        }
+        @keyframes nudge {
+          from {
+            translate: -40px 0;
+            opacity: 0;
+          }
+        }
+      }
+
+      /* Page furniture */
+      main {
+        max-width: 940px;
+        margin: 0 auto;
+        padding: 0 var(--pad) 20vh;
+      }
+      section {
+        margin: 14vh 0;
+      }
+      h2 {
+        font-size: clamp(1.5rem, 4vw, 2.2rem);
+      }
+      .lead {
+        color: var(--fg-dim);
+        max-width: 62ch;
+      }
+      .stack > * + * {
+        margin-top: 1rem;
+      }
+      .panel {
+        padding: 1.6rem;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: var(--bg-1);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="progress" aria-hidden="true"></div>
+
+    <div class="note">
+      <h1>Scroll-Driven Animations</h1>
+      <p>
+        This entire page contains <strong>no JavaScript</strong> beyond the top
+        bar. Every motion below is a CSS <code>@keyframes</code> whose playhead
+        is the scroll position rather than the clock. Read the
+        <code>&lt;style&gt;</code> block — it is the whole tutorial.
+      </p>
+      <p>
+        The two primitives are <code>scroll()</code> (progress of a scroll
+        container) and <code>view()</code> (progress of an element through the
+        viewport), selected with <code>animation-timeline</code> and windowed
+        with <code>animation-range</code>.
+      </p>
+    </div>
+
+    <main>
+      <section class="reveal stack">
+        <h2>1 · Reveal on enter</h2>
+        <p class="lead">
+          <code>animation-timeline: view()</code> with
+          <code>animation-range: entry 5% entry 60%</code>. Scrub the scrollbar
+          slowly — the fade is genuinely tied to position, so it runs backwards
+          when you scroll up. An IntersectionObserver cannot do that.
+        </p>
+      </section>
+
+      <section class="stack">
+        <h2 class="reveal">2 · Depth parallax</h2>
+        <div class="parallax">
+          <div class="parallax__layer"></div>
+          <div class="parallax__layer"></div>
+          <div class="parallax__layer"></div>
+          <h2>PARALLAX</h2>
+        </div>
+      </section>
+
+      <section class="stack">
+        <h2 class="reveal">3 · Horizontal rail with a named timeline</h2>
+        <p class="lead">
+          The rail declares <code>scroll-timeline: --rail x</code>; the bar below
+          attaches to it by name from outside the subtree. Cards use
+          <code>view(x)</code>.
+        </p>
+        <div class="rail">
+          <div class="rail__item">01</div>
+          <div class="rail__item">02</div>
+          <div class="rail__item">03</div>
+          <div class="rail__item">04</div>
+          <div class="rail__item">05</div>
+        </div>
+        <div class="rail__meter"></div>
+      </section>
+
+      <section class="stack">
+        <h2 class="reveal">4 · Sticky scrollytelling</h2>
+        <p class="lead">
+          A 300vh track with a sticky stage. The track's own
+          <code>view()</code> progress over its <code>contain</code> phase drives
+          the shape.
+        </p>
+        <div class="track">
+          <div class="stage"><div class="cube"></div></div>
+        </div>
+      </section>
+
+      <section class="stack">
+        <h2 class="reveal">5 · Scroll-<em>triggered</em></h2>
+        <div class="panel triggered">
+          <p style="margin: 0">
+            <code>animation-trigger</code> plays a normal timed animation when a
+            range is crossed — <code>play-forwards</code> going down,
+            <code>play-backwards</code> coming back up — instead of scrubbing it.
+            Use it when you want a spring or an ease that should not be dragged.
+            If your browser lacks it, this box simply sits still.
+          </p>
+        </div>
+      </section>
+
+      <section class="reveal stack">
+        <h2>Gotchas worth remembering</h2>
+        <ul class="lead">
+          <li>
+            Wrap in <code>@supports (animation-timeline: view())</code> so the
+            <code>from</code> state never becomes a permanent
+            <code>opacity: 0</code> in an unsupporting browser.
+          </li>
+          <li>
+            <code>overflow: hidden</code> makes an element a scroll container and
+            can capture the timeline you meant to reach —
+            <code>overflow: clip</code> does not.
+          </li>
+          <li>
+            Animate <code>transform</code>, <code>translate</code>,
+            <code>scale</code>, <code>opacity</code> and <code>filter</code>.
+            Anything that triggers layout will drop frames on the scroll thread.
+          </li>
+          <li>
+            Honour <code>prefers-reduced-motion</code>: scrubbed motion is still
+            motion.
+          </li>
+        </ul>
+      </section>
+    </main>
+
+    <script type="module">
+      import { mountDemoBar } from '../../src/lib/chrome.js';
+      mountDemoBar();
+    </script>
+  </body>
+</html>

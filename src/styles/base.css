@@ -1,0 +1,184 @@
+/* ---------------------------------------------------------------------------
+   Shared design tokens + reset.
+   Dark-first, OKLCH colour space, elevation by lightness rather than shadow.
+   Imported by every demo page; demos add their own local stylesheet on top.
+   --------------------------------------------------------------------------- */
+
+:root {
+  color-scheme: dark light;
+
+  /* Surfaces: elevation = lightness steps, not drop shadows. */
+  --bg-0: oklch(14% 0.012 275);
+  --bg-1: oklch(18% 0.014 275);
+  --bg-2: oklch(22% 0.016 275);
+  --line: oklch(30% 0.018 275);
+
+  /* Text */
+  --fg: oklch(96% 0.005 275);
+  --fg-dim: oklch(72% 0.012 275);
+  --fg-faint: oklch(56% 0.014 275);
+
+  /* Accents — one hue family, varied by chroma/lightness. */
+  --accent: oklch(72% 0.19 265);
+  --accent-2: oklch(78% 0.17 175);
+  --accent-3: oklch(76% 0.2 25);
+  --accent-soft: color-mix(in oklch, var(--accent) 18%, transparent);
+
+  --radius: 14px;
+  --radius-sm: 8px;
+  --pad: clamp(1rem, 3vw, 2.5rem);
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Inter, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-io: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--bg-0);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--accent);
+  text-decoration-color: color-mix(in oklch, var(--accent) 40%, transparent);
+  text-underline-offset: 3px;
+}
+
+h1,
+h2,
+h3 {
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.4em;
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+code,
+kbd {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 0.1em 0.4em;
+}
+
+canvas {
+  display: block;
+}
+
+:where(button, a, input, select):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: var(--radius-sm);
+}
+
+/* --- Demo chrome ---------------------------------------------------------- */
+
+.demo-bar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.7rem var(--pad);
+  background: color-mix(in oklch, var(--bg-0) 78%, transparent);
+  backdrop-filter: blur(14px) saturate(160%);
+  border-bottom: 1px solid var(--line);
+  font-size: 0.85rem;
+}
+
+.demo-bar__back {
+  color: var(--fg-dim);
+  text-decoration: none;
+  flex-shrink: 0;
+}
+.demo-bar__back:hover {
+  color: var(--fg);
+}
+
+.demo-bar__title {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.demo-bar__tags {
+  margin-left: auto;
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.tag {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--fg-faint);
+  border: 1px solid var(--line);
+  border-radius: 100px;
+  padding: 0.15rem 0.55rem;
+  white-space: nowrap;
+}
+
+/* Explainer panel used at the top of most demos. */
+.note {
+  max-width: 68ch;
+  margin: 0 auto;
+  padding: var(--pad);
+  color: var(--fg-dim);
+}
+.note h1 {
+  color: var(--fg);
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
+}
+.note :is(strong, b) {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+/* Non-support / capability warning. */
+.fallback {
+  margin: 1rem auto;
+  max-width: 68ch;
+  padding: 0.9rem 1.1rem;
+  border: 1px solid oklch(60% 0.15 70 / 0.5);
+  background: oklch(60% 0.15 70 / 0.1);
+  border-radius: var(--radius);
+  color: oklch(85% 0.09 80);
+  font-size: 0.9rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
