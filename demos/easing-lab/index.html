@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Easing &amp; Timing — Frontend Experimentations</title>
+    <link rel="stylesheet" href="../../src/styles/base.css" />
+    <style>
+      main { max-width: 1080px; margin: 0 auto; padding: 0 var(--pad) 8rem; }
+      section { margin: 4rem 0; }
+      h2 { font-size: 1.25rem; display: flex; gap: 0.7rem; align-items: baseline; }
+      h2 span { font-family: var(--font-mono); font-size: 0.72rem; color: var(--accent-2); }
+      .lead { color: var(--fg-dim); max-width: 66ch; }
+      .callout { border-left: 2px solid var(--accent); padding-left: 1rem; color: var(--fg-dim); font-size: 0.88rem; margin: 1.2rem 0; }
+      pre { overflow-x: auto; background: var(--bg-1); border: 1px solid var(--line); border-radius: var(--radius); padding: 0.9rem 1.1rem; font-size: 0.76rem; }
+
+      /* --- Curve grid ------------------------------------------------------ */
+      .curves { display: grid; gap: 0.9rem; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+      .curve {
+        border: 1px solid var(--line); border-radius: var(--radius);
+        background: var(--bg-1); padding: 0.8rem; cursor: pointer;
+        transition: border-color 0.2s, background 0.2s;
+      }
+      .curve:hover { border-color: var(--accent); }
+      .curve h3 { font-size: 0.78rem; margin: 0 0 0.5rem; font-family: var(--font-mono); font-weight: 500; }
+      .curve svg { display: block; width: 100%; height: auto; overflow: visible; }
+      .curve .grid { stroke: var(--line); stroke-width: 1; }
+      .curve .path { fill: none; stroke: var(--accent-2); stroke-width: 2.5; stroke-linecap: round; }
+      /* The overshoot region of a spring or back() ease lives outside the unit
+         box. Drawing the box as a rect rather than clipping means it stays
+         visible — the overshoot IS the information. */
+      .curve .box { fill: none; stroke: var(--line); stroke-dasharray: 3 3; }
+      .curve .dot { fill: var(--accent-3); }
+      .curve .track { fill: none; stroke: var(--line); stroke-width: 6; stroke-linecap: round; }
+      .curve .runner { fill: var(--accent); }
+      .curve code { display: block; font-size: 0.62rem; color: var(--fg-faint); margin-top: 0.45rem; word-break: break-all; }
+
+      /* --- Bezier editor --------------------------------------------------- */
+      .editor { display: grid; gap: 1.4rem; grid-template-columns: minmax(240px, 320px) 1fr; align-items: start; }
+      @media (max-width: 760px) { .editor { grid-template-columns: 1fr; } }
+      .editor__pad {
+        border: 1px solid var(--line); border-radius: var(--radius);
+        background: var(--bg-1); padding: 1.2rem;
+      }
+      .editor__pad svg { display: block; width: 100%; height: auto; overflow: visible; touch-action: none; }
+      .handle { fill: var(--accent); cursor: grab; }
+      .handle:active { cursor: grabbing; }
+      .handle-line { stroke: var(--accent); stroke-width: 1.5; opacity: 0.5; }
+      .editor__out { display: grid; gap: 0.9rem; align-content: start; }
+      .out-row {
+        display: flex; gap: 0.7rem; align-items: center; font-family: var(--font-mono);
+        font-size: 0.78rem; background: var(--bg-1); border: 1px solid var(--line);
+        border-radius: var(--radius); padding: 0.7rem 0.9rem; color: var(--accent-2);
+        word-break: break-all;
+      }
+      .out-row button {
+        margin-left: auto; flex-shrink: 0; font: inherit; font-size: 0.72rem;
+        background: var(--bg-2); color: var(--fg); border: 1px solid var(--line);
+        border-radius: 100px; padding: 0.2rem 0.7rem; cursor: pointer;
+      }
+
+      /* --- Runners --------------------------------------------------------- */
+      .runner-track {
+        position: relative; height: 46px; border-radius: 100px;
+        background: var(--bg-2); overflow: hidden; margin: 0.35rem 0;
+      }
+      .runner-ball {
+        position: absolute; top: 50%; left: 5px; width: 36px; height: 36px;
+        border-radius: 50%; translate: 0 -50%; background: var(--accent);
+      }
+      .runner-label { display: flex; justify-content: space-between; font-size: 0.76rem; color: var(--fg-dim); }
+      .runner-label b { font-family: var(--font-mono); font-weight: 500; color: var(--accent-2); }
+
+      .controls {
+        display: flex; gap: 1.2rem; flex-wrap: wrap; align-items: center;
+        padding: 0.85rem 1.1rem; border: 1px solid var(--line);
+        border-radius: var(--radius); background: var(--bg-1);
+        font-size: 0.8rem; color: var(--fg-dim); margin: 1.2rem 0;
+      }
+      .controls label { display: flex; align-items: center; gap: 0.6rem; }
+      .controls input[type='range'] { accent-color: var(--accent); width: 130px; }
+      .controls output { font-family: var(--font-mono); color: var(--accent-2); min-width: 3rem; }
+      .controls button, .go {
+        font: inherit; font-size: 0.8rem; font-weight: 600;
+        background: var(--fg); color: var(--bg-0); border: 0;
+        border-radius: 100px; padding: 0.42rem 1.05rem; cursor: pointer;
+      }
+
+      table { width: 100%; border-collapse: collapse; font-size: 0.84rem; margin-top: 1rem; }
+      th, td { padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+      th { color: var(--fg-faint); font-weight: 500; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; }
+      td:first-child { font-family: var(--font-mono); color: var(--accent-2); white-space: nowrap; }
+    </style>
+  </head>
+  <body>
+    <div class="note">
+      <h1>Easing &amp; Timing</h1>
+      <p>
+        Every curve plotted <em>and</em> played from the same function, so the
+        graph is provably the motion. The plots deliberately extend past the
+        unit box — for springs and <code>back</code> eases,
+        <strong>the overshoot is the point</strong>.
+      </p>
+    </div>
+
+    <main>
+      <section>
+        <h2>1 · The curves <span>click any to replay</span></h2>
+        <p class="lead">
+          Each cell samples its own easing function to draw the path, then
+          drives the runner beneath with the identical function. Hover to
+          replay; click to copy the CSS.
+        </p>
+        <div class="controls">
+          <label>duration <input type="range" id="dur" min="200" max="2000" step="50" value="900" /><output id="dur-out"></output></label>
+          <button type="button" id="play-all">Play all</button>
+        </div>
+        <div class="curves" id="curves"></div>
+      </section>
+
+      <section>
+        <h2>2 · Bezier editor <span>drag the handles</span></h2>
+        <p class="lead">
+          A <code>cubic-bezier(x1, y1, x2, y2)</code> is two control points.
+          X must stay in 0–1 (time cannot run backwards); Y is unbounded, which
+          is exactly how you get anticipation and overshoot.
+        </p>
+        <div class="editor">
+          <div class="editor__pad">
+            <svg id="bezier" viewBox="-30 -60 160 220" aria-label="Bezier curve editor"></svg>
+          </div>
+          <div class="editor__out">
+            <div class="out-row"><span id="bez-css"></span><button type="button" data-copy="bez-css">copy</button></div>
+            <div class="runner-label"><span>preview</span><b id="bez-hint"></b></div>
+            <div class="runner-track"><div class="runner-ball" id="bez-ball"></div></div>
+            <button class="go" type="button" id="bez-play">Play</button>
+            <p class="lead" style="font-size: 0.82rem; margin: 0">
+              Drag the first handle below the baseline for
+              <strong>anticipation</strong> — the element pulls back before it
+              moves. Drag the second above the top for
+              <strong>overshoot</strong>.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>3 · Springs <span>no duration at all</span></h2>
+        <p class="lead">
+          A spring is defined by stiffness, damping and mass. It has no
+          duration — it settles when the physics say so. The damping ratio
+          <code>ζ = c / (2√(km))</code> classifies the whole behaviour.
+        </p>
+        <div class="controls">
+          <label>stiffness <input type="range" id="k" min="20" max="600" value="220" /><output id="k-out"></output></label>
+          <label>damping <input type="range" id="c" min="2" max="60" value="18" /><output id="c-out"></output></label>
+          <label>mass <input type="range" id="m" min="5" max="50" value="10" /><output id="m-out"></output></label>
+        </div>
+        <div class="editor">
+          <div class="editor__pad">
+            <svg id="spring-plot" viewBox="-30 -70 160 230" aria-label="Spring curve"></svg>
+          </div>
+          <div class="editor__out">
+            <div class="out-row" style="color: var(--fg)"><span id="zeta"></span></div>
+            <div class="runner-label"><span>spring preview</span><b id="settle"></b></div>
+            <div class="runner-track"><div class="runner-ball" id="spring-ball"></div></div>
+            <button class="go" type="button" id="spring-play">Play</button>
+            <div class="out-row"><span id="linear-css" style="font-size: 0.68rem"></span><button type="button" data-copy="linear-css">copy</button></div>
+            <p class="lead" style="font-size: 0.82rem; margin: 0">
+              That <code>linear()</code> string is the spring sampled into CSS
+              keypoints — it runs a real spring with no JavaScript at all.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>4 · Interruption <span>the argument for springs</span></h2>
+        <p class="lead">
+          Press <em>toggle</em> repeatedly, fast. The eased ball restarts from
+          zero velocity every time and visibly stutters. The spring carries its
+          current velocity into the new target and stays smooth. This is the
+          single strongest practical reason to use springs for anything a user
+          can interrupt.
+        </p>
+        <div class="controls"><button type="button" id="interrupt">Toggle — hammer this button</button></div>
+        <div class="runner-label"><span>ease · 500ms · restarts each time</span><b>jumpy</b></div>
+        <div class="runner-track"><div class="runner-ball" id="int-ease" style="background: var(--fg-faint)"></div></div>
+        <div class="runner-label" style="margin-top: 1rem"><span>spring · carries velocity</span><b>continuous</b></div>
+        <div class="runner-track"><div class="runner-ball" id="int-spring"></div></div>
+      </section>
+
+      <section>
+        <h2>5 · steps() <span>for things that should not glide</span></h2>
+        <p class="lead">
+          Sprite sheets, typewriters, segment counters and anything discrete.
+          <code>steps(n, end)</code> holds each value rather than interpolating.
+        </p>
+        <div class="runner-label"><span>steps(8, end)</span><b id="stepper" style="font-family: var(--font-mono)"></b></div>
+        <div class="runner-track"><div class="runner-ball" id="step-ball" style="background: var(--accent-2)"></div></div>
+        <button class="go" type="button" id="step-play" style="margin-top: 0.8rem">Play</button>
+      </section>
+
+      <section>
+        <h2>The rules</h2>
+        <table>
+          <tr><th>Situation</th><th>Curve</th><th>Why</th></tr>
+          <tr><td>entering</td><td>ease-out</td><td>fast in, gentle settle — the element arrives and stops</td></tr>
+          <tr><td>exiting</td><td>ease-in</td><td>slow start, accelerates away — nobody needs to watch it leave</td></tr>
+          <tr><td>moving A→B</td><td>ease-in-out</td><td>both ends anchored, so both need softening</td></tr>
+          <tr><td>user-driven</td><td>spring</td><td>survives interruption; carries velocity from a gesture</td></tr>
+          <tr><td>continuous</td><td>linear</td><td>spinners, marquees, progress — anything with no start or end</td></tr>
+          <tr><td>discrete</td><td>steps()</td><td>sprites, typewriters, counters</td></tr>
+        </table>
+        <p class="callout">
+          <strong>Scale duration with distance.</strong> A tooltip appearing 8px
+          away and a drawer sliding 400px should never share a duration. A
+          reasonable heuristic: <code>duration ≈ 120 + distance × 0.6</code> ms,
+          clamped to 150–500ms.
+        </p>
+        <ul class="lead">
+          <li><strong>0–100ms</strong> — reads as instant. Hover states.</li>
+          <li><strong>100–300ms</strong> — most UI state changes.</li>
+          <li><strong>300–500ms</strong> — modals, drawers, page-level moves.</li>
+          <li><strong>&gt;500ms</strong> — only when the user is explicitly waiting.</li>
+          <li>
+            <strong>Never <code>linear</code> for movement.</strong> Nothing
+            physical starts and stops instantaneously, so it reads as
+            mechanical every time.
+          </li>
+        </ul>
+      </section>
+    </main>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

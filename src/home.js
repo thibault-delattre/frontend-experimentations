@@ -1,4 +1,5 @@
 import { DEMOS, CATEGORIES } from './lib/registry.js';
+import { PROMPTS } from './lib/prompts.js';
 
 const grid = document.getElementById('grid');
 const filters = document.getElementById('filters');
@@ -11,8 +12,29 @@ grid.innerHTML = DEMOS.map(
     <h2 class="card__title">${d.title}</h2>
     <p class="card__blurb">${d.blurb}</p>
     <span class="card__tags">${d.tags.map((t) => `<span class="tag">${t}</span>`).join('')}</span>
+    <button class="card__prompt" type="button" data-prompt="${d.slug}"
+            title="Copy the AI prompt that rebuilds this demo">✦ prompt</button>
   </a>`
 ).join('');
+
+// --- Copy the AI prompt straight from a card --------------------------------
+// The button sits inside an <a>, so the click must be stopped from navigating.
+grid.addEventListener('click', async (e) => {
+  const btn = e.target.closest('[data-prompt]');
+  if (!btn) return;
+  e.preventDefault();
+  e.stopPropagation();
+
+  const prompt = PROMPTS[btn.dataset.prompt];
+  if (!prompt) return;
+  try {
+    await navigator.clipboard.writeText(prompt.trim());
+    btn.textContent = 'copied ✓';
+  } catch {
+    btn.textContent = 'open the demo →';
+  }
+  setTimeout(() => (btn.textContent = '✦ prompt'), 1500);
+});
 
 // --- Filter chips -----------------------------------------------------------
 const cats = [['all', { label: `All ${DEMOS.length}` }], ...Object.entries(CATEGORIES)];

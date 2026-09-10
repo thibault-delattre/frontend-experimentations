@@ -89,7 +89,10 @@
         <div class="row" id="ramps">
           <button type="button" data-ramp=" .:-=+*#%@" aria-pressed="true">classic</button>
           <button type="button" data-ramp=" ░▒▓█">blocks</button>
-          <button type="button" data-ramp=" .'`^\",:;Il!i&gt;&lt;~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&amp;8%B@$">70-level</button>
+          <!-- HTML attributes have no backslash escapes: a literal \" ends the
+               attribute early and silently truncates the ramp. Quotes and
+               ampersands must be entities. -->
+          <button type="button" data-ramp=" .'`^&quot;,:;Il!i&gt;&lt;~+_-?][}{1)(|\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&amp;8%B@$">70-level</button>
           <button type="button" data-ramp=" ·∴∵※▨▩█">glyph</button>
         </div>
         <div class="row" id="sources">

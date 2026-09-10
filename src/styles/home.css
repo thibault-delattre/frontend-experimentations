@@ -59,6 +59,35 @@ body {
   margin: 0;
 }
 
+/* Deliberately NOT flex: these children are inline text, and making them flex
+   items lays each one out as its own column instead of letting the sentence
+   wrap normally. */
+.hero__prompt {
+  display: block;
+  max-width: 60ch;
+  margin: 1.6rem 0 0;
+  padding: 0.7rem 1.1rem;
+  border: 1px solid color-mix(in oklch, var(--accent) 35%, var(--line));
+  border-radius: var(--radius);
+  background: color-mix(in oklch, var(--accent) 9%, transparent);
+  font-size: 0.88rem;
+  color: var(--fg-dim);
+}
+.hero__prompt span {
+  color: var(--accent-2);
+  margin-right: 0.35rem;
+}
+.hero__prompt strong {
+  color: var(--fg);
+  font-weight: 600;
+}
+.hero__prompt em {
+  font-style: normal;
+  font-family: var(--font-mono);
+  font-size: 0.82em;
+  color: var(--accent-2);
+}
+
 .filters {
   display: flex;
   flex-wrap: wrap;
@@ -163,6 +192,46 @@ body {
   flex-wrap: wrap;
   margin-top: auto;
   padding-top: 0.8rem;
+  padding-right: 4.6rem; /* room for the prompt button */
+}
+
+/* Revealed on hover/focus so the card stays calm at rest, but always present
+   for keyboard users the moment the card is focused. */
+.card__prompt {
+  position: absolute;
+  right: 1rem;
+  bottom: 1.1rem;
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: oklch(78% 0.16 var(--hue));
+  background: color-mix(in oklch, oklch(70% 0.2 var(--hue)) 14%, var(--bg-2));
+  border: 1px solid color-mix(in oklch, oklch(70% 0.2 var(--hue)) 35%, transparent);
+  border-radius: 100px;
+  padding: 0.25rem 0.6rem;
+  cursor: pointer;
+  opacity: 0;
+  translate: 0 4px;
+  transition: opacity 0.25s, translate 0.25s var(--ease-out), background 0.2s;
+  z-index: 2;
+}
+.card:hover .card__prompt,
+.card:focus-within .card__prompt,
+.card__prompt:focus-visible {
+  opacity: 1;
+  translate: 0 0;
+}
+.card__prompt:hover {
+  background: color-mix(in oklch, oklch(70% 0.2 var(--hue)) 28%, var(--bg-2));
+}
+
+/* Touch devices have no hover, so the affordance would never appear. */
+@media (hover: none) {
+  .card__prompt {
+    opacity: 1;
+    translate: 0 0;
+  }
 }
 
 .card[hidden] {

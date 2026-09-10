@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Loading &amp; Empty States — Frontend Experimentations</title>
+    <link rel="stylesheet" href="../../src/styles/base.css" />
+    <style>
+      main { max-width: 1080px; margin: 0 auto; padding: 0 var(--pad) 8rem; }
+      section { margin: 4rem 0; }
+      h2 { font-size: 1.25rem; display: flex; gap: 0.7rem; align-items: baseline; }
+      h2 span { font-family: var(--font-mono); font-size: 0.72rem; color: var(--accent-2); }
+      .lead { color: var(--fg-dim); max-width: 66ch; }
+      .callout { border-left: 2px solid var(--accent); padding-left: 1rem; color: var(--fg-dim); font-size: 0.88rem; margin: 1.2rem 0; }
+      pre { overflow-x: auto; background: var(--bg-1); border: 1px solid var(--line); border-radius: var(--radius); padding: 0.9rem 1.1rem; font-size: 0.76rem; }
+      .toolbar { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin: 1.2rem 0; }
+      .toolbar button {
+        font: inherit; font-size: 0.8rem; background: var(--bg-2); color: var(--fg);
+        border: 1px solid var(--line); border-radius: 100px; padding: 0.35rem 0.9rem; cursor: pointer;
+      }
+      .toolbar button[aria-pressed='true'] { background: var(--fg); color: var(--bg-0); border-color: var(--fg); }
+
+      /* ── THE CARD ────────────────────────────────────────────────────────
+         Skeleton and content share the SAME box model — padding, gaps, line
+         heights and the avatar size are all one set of variables. That is
+         what stops the swap from jolting, and it is the only part of skeleton
+         design that really matters. */
+      .card {
+        --avatar: 40px;
+        --line-h: 0.85rem;
+        display: grid; gap: 0.75rem;
+        border: 1px solid var(--line); border-radius: var(--radius);
+        background: var(--bg-1); padding: 1.1rem; min-height: 172px;
+        align-content: start;
+      }
+      .card__head { display: flex; gap: 0.75rem; align-items: center; }
+      .card__avatar { width: var(--avatar); height: var(--avatar); border-radius: 50%; flex-shrink: 0; }
+      .card__avatar.real { background: linear-gradient(140deg, var(--accent), var(--accent-3)); }
+      .card__names { display: grid; gap: 0.3rem; flex: 1; min-width: 0; }
+      .card__name { font-size: 0.88rem; font-weight: 600; }
+      .card__meta { font-size: 0.74rem; color: var(--fg-faint); }
+      .card__body { font-size: 0.82rem; color: var(--fg-dim); line-height: 1.55; }
+      .card__foot { display: flex; gap: 0.5rem; margin-top: auto; padding-top: 0.3rem; }
+      .card__foot button {
+        font: inherit; font-size: 0.75rem; background: var(--bg-2); color: var(--fg-dim);
+        border: 1px solid var(--line); border-radius: 100px; padding: 0.25rem 0.75rem; cursor: pointer;
+      }
+
+      /* Skeleton bars inherit the same line height as the text they replace. */
+      .sk { background: var(--bg-2); border-radius: 6px; height: var(--line-h); position: relative; overflow: hidden; }
+      .sk--avatar { border-radius: 50%; height: var(--avatar); width: var(--avatar); }
+      .sk--pill { border-radius: 100px; height: 1.6rem; width: 5rem; }
+
+      /* Shimmer: a translated pseudo-element, NOT an animated
+         background-position. background-position repaints the element every
+         frame; a transform is composited. */
+      .sk::after {
+        content: ''; position: absolute; inset: 0;
+        background: linear-gradient(90deg, transparent, oklch(100% 0 0 / 0.07) 50%, transparent);
+        translate: -100% 0;
+        animation: shimmer 1.4s infinite;
+      }
+      @keyframes shimmer { to { translate: 100% 0; } }
+
+      @media (prefers-reduced-motion: reduce) {
+        .sk::after { animation: none; }
+        .sk { animation: pulse 1.8s ease-in-out infinite; }
+        @keyframes pulse { 50% { opacity: 0.55; } }
+      }
+
+      .grid3 { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+
+      /* ── ERROR ───────────────────────────────────────────────────────────── */
+      .card--error { border-color: oklch(45% 0.14 25); background: oklch(22% 0.05 25); }
+      .card--error h4 { margin: 0; font-size: 0.9rem; color: oklch(84% 0.12 25); }
+      .card--error p { margin: 0; font-size: 0.8rem; color: oklch(76% 0.06 25); }
+
+      /* ── PROGRESS ───────────────────────────────────────────────────────── */
+      .bar { height: 6px; border-radius: 100px; background: var(--bg-2); overflow: hidden; }
+      .bar__fill { height: 100%; background: var(--accent); border-radius: 100px; transition: width 0.25s var(--ease-out); }
+      /* Indeterminate: a shuttle that never claims a percentage. */
+      .bar--indet .bar__fill { width: 35%; animation: shuttle 1.5s var(--ease-io) infinite; }
+      @keyframes shuttle {
+        0% { translate: -100% 0; }
+        100% { translate: 340% 0; }
+      }
+      .spinner {
+        width: 18px; height: 18px; border-radius: 50%;
+        border: 2px solid var(--line); border-top-color: var(--accent);
+        animation: spin 700ms linear infinite;
+      }
+      @keyframes spin { to { rotate: 360deg; } }
+
+      .threshold {
+        display: grid; gap: 0.7rem; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr));
+      }
+      .threshold > div {
+        border: 1px solid var(--line); border-radius: var(--radius);
+        background: var(--bg-1); padding: 1rem; min-height: 118px;
+        display: grid; gap: 0.55rem; align-content: start;
+      }
+      .threshold b { font-family: var(--font-mono); font-size: 0.7rem; color: var(--accent-2); }
+      .threshold p { margin: 0; font-size: 0.78rem; color: var(--fg-dim); }
+      .threshold .slot { display: flex; align-items: center; gap: 0.6rem; min-height: 26px; font-size: 0.8rem; }
+
+      /* ── OPTIMISTIC ─────────────────────────────────────────────────────── */
+      .like {
+        font: inherit; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 0.5rem;
+        background: var(--bg-2); color: var(--fg); border: 1px solid var(--line);
+        border-radius: 100px; padding: 0.45rem 1rem; cursor: pointer;
+        transition: background 0.2s, border-color 0.2s, scale 0.15s;
+      }
+      .like[aria-pressed='true'] { background: color-mix(in oklch, var(--accent-3) 25%, var(--bg-2)); border-color: var(--accent-3); }
+      .like:active { scale: 0.94; }
+      .like.rolled-back { animation: shake 0.4s; }
+      @keyframes shake {
+        25% { translate: -5px 0; }
+        50% { translate: 5px 0; }
+        75% { translate: -3px 0; }
+      }
+      .like__count { font-variant-numeric: tabular-nums; }
+
+      /* ── STREAMING ──────────────────────────────────────────────────────── */
+      .stream { display: grid; gap: 0.55rem; }
+      .stream li {
+        list-style: none; padding: 0.7rem 0.95rem; border: 1px solid var(--line);
+        border-radius: var(--radius-sm); background: var(--bg-1); font-size: 0.85rem;
+        animation: arrive 0.45s var(--ease-out) both;
+      }
+      @keyframes arrive { from { opacity: 0; translate: 0 12px; } }
+
+      /* ── EMPTY ──────────────────────────────────────────────────────────── */
+      .empties { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); }
+      .empty {
+        border: 1px solid var(--line); border-radius: var(--radius);
+        background: var(--bg-1); padding: 2rem 1.4rem; text-align: center;
+        display: grid; gap: 0.5rem; place-items: center; min-height: 230px; align-content: center;
+      }
+      .empty svg { opacity: 0.8; }
+      .empty h4 { margin: 0; font-size: 0.95rem; }
+      .empty p { margin: 0; font-size: 0.82rem; color: var(--fg-dim); max-width: 32ch; }
+      .empty button {
+        font: inherit; font-size: 0.8rem; font-weight: 600; margin-top: 0.5rem;
+        background: var(--accent); color: oklch(16% 0.03 265); border: 0;
+        border-radius: 100px; padding: 0.45rem 1.1rem; cursor: pointer;
+      }
+      .empty--bad { color: var(--fg-faint); font-size: 0.85rem; }
+    </style>
+  </head>
+  <body>
+    <div class="note">
+      <h1>Loading &amp; Empty States</h1>
+      <p>
+        The screens most products treat as an afterthought, and where a
+        surprising amount of perceived quality lives. The recurring theme:
+        <strong>a skeleton must match the geometry of what replaces it</strong>,
+        and every threshold below is a real number, not a taste call.
+      </p>
+    </div>
+
+    <main>
+      <section>
+        <h2>1 · Three states, one geometry <span>toggle them</span></h2>
+        <p class="lead">
+          The same component rendered as skeleton, loaded and error. Flip
+          between them and watch the box: nothing moves. The skeleton bars
+          inherit the same line-height and the avatar the same diameter, from
+          shared custom properties.
+        </p>
+        <div class="toolbar" id="stateBar">
+          <button type="button" data-state="skeleton" aria-pressed="true">Skeleton</button>
+          <button type="button" data-state="loaded" aria-pressed="false">Loaded</button>
+          <button type="button" data-state="error" aria-pressed="false">Error</button>
+          <button type="button" data-state="cycle" aria-pressed="false">Realistic load →</button>
+        </div>
+        <div class="grid3" id="cards"></div>
+        <p class="callout">
+          A skeleton whose bars are a different height from the text, or whose
+          card is shorter than the loaded one, produces a jolt at exactly the
+          moment the user starts reading. That jolt is worse than showing
+          nothing at all.
+        </p>
+      </section>
+
+      <section>
+        <h2>2 · The thresholds <span>numbers, not vibes</span></h2>
+        <p class="lead">
+          How long a request takes should decide what you show. These are the
+          established perceptual bands — click each to simulate a response of
+          that duration.
+        </p>
+        <div class="threshold" id="thresholds"></div>
+        <p class="callout">
+          The two rules people miss: a <strong>delay before showing</strong>
+          (do not flash a spinner for a 60ms request) and a
+          <strong>minimum display time</strong> once it is shown (do not flash
+          it away after 30ms either). Together they turn a flickering mess into
+          something that reads as deliberate.
+        </p>
+        <pre><code>let spinner = null;
+// Only show the spinner if we are still waiting after 100ms…
+const delay = setTimeout(() => { spinner = show(); shownAt = Date.now(); }, 100);
+
+const data = await fetch(…);
+clearTimeout(delay);
+
+// …and once shown, keep it up for at least 500ms.
+if (spinner) {
+  const elapsed = Date.now() - shownAt;
+  if (elapsed &lt; 500) await sleep(500 - elapsed);
+  hide(spinner);
+}</code></pre>
+      </section>
+
+      <section>
+        <h2>3 · Progress that does not lie <span>determinate vs. indeterminate</span></h2>
+        <p class="lead">
+          If you know the total, show it. If you do not, an indeterminate bar is
+          honest and a fake percentage is not — users notice a bar that sits at
+          90% forever, and they stop trusting every bar afterwards.
+        </p>
+        <div class="grid3">
+          <div style="display: grid; gap: 0.6rem">
+            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--fg-dim)">
+              <span>Uploading 3 files</span><b id="pct" style="font-family: var(--font-mono); color: var(--accent-2)">0%</b>
+            </div>
+            <div class="bar"><div class="bar__fill" id="determinate" style="width: 0%"></div></div>
+            <button class="like" type="button" id="upload" style="justify-self: start">Start upload</button>
+          </div>
+          <div style="display: grid; gap: 0.6rem">
+            <div style="font-size: 0.8rem; color: var(--fg-dim)">Total unknown</div>
+            <div class="bar bar--indet"><div class="bar__fill"></div></div>
+            <div style="font-size: 0.76rem; color: var(--fg-faint)">Never claims a number it does not have.</div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>4 · Optimistic UI <span>and a visible rollback</span></h2>
+        <p class="lead">
+          Update the interface immediately and reconcile with the server
+          afterwards. The half nobody implements is the failure path: if the
+          request fails, the revert must be <em>visible</em>, or the user walks
+          away believing something happened that did not.
+        </p>
+        <div class="toolbar">
+          <button class="like" id="like" type="button" aria-pressed="false">
+            <span>♥</span> <span class="like__count" id="likeCount">128</span>
+          </button>
+          <label style="font-size: 0.8rem; color: var(--fg-dim); display: flex; align-items: center; gap: 0.5rem">
+            <input type="checkbox" id="failMode" /> make the server fail
+          </label>
+        </div>
+        <div id="likeStatus" role="status" aria-live="polite" style="font-size: 0.8rem; color: var(--fg-faint); min-height: 1.4em"></div>
+      </section>
+
+      <section>
+        <h2>5 · Streaming <span>show what has arrived</span></h2>
+        <p class="lead">
+          When results arrive incrementally, render them incrementally. A user
+          reading the first three rows does not care that the last seven are
+          still in flight.
+        </p>
+        <div class="toolbar"><button type="button" id="streamBtn">Stream results</button></div>
+        <ul class="stream" id="stream"></ul>
+      </section>
+
+      <section>
+        <h2>6 · Empty states <span>the cheapest win here</span></h2>
+        <p class="lead">
+          An empty state is a design opportunity that most products spend on
+          the words "No data". It should say what would be here, why it is not,
+          and what to do about it.
+        </p>
+        <div class="empties">
+          <div class="empty empty--bad">No data</div>
+          <div class="empty">
+            <svg width="52" height="52" viewBox="0 0 52 52" fill="none" aria-hidden="true">
+              <rect x="9" y="13" width="34" height="28" rx="4" stroke="currentColor" stroke-width="2" opacity=".35" />
+              <path d="M17 24h18M17 31h11" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".35" />
+              <circle cx="38" cy="37" r="9" fill="var(--bg-1)" stroke="var(--accent)" stroke-width="2" />
+              <path d="M38 33v8M34 37h8" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" />
+            </svg>
+            <h4>No reports yet</h4>
+            <p>Reports appear here once you have connected a data source and run your first query.</p>
+            <button type="button">Connect a source</button>
+          </div>
+          <div class="empty">
+            <svg width="52" height="52" viewBox="0 0 52 52" fill="none" aria-hidden="true">
+              <circle cx="23" cy="23" r="13" stroke="currentColor" stroke-width="2" opacity=".35" />
+              <path d="m33 33 9 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".35" />
+              <path d="m19 19 8 8M27 19l-8 8" stroke="var(--accent-3)" stroke-width="2" stroke-linecap="round" />
+            </svg>
+            <h4>No matches for “tsl”</h4>
+            <p>Try a shorter term, or clear the active filters — three are currently applied.</p>
+            <button type="button">Clear filters</button>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Accessibility <span>usually skipped entirely</span></h2>
+        <ul class="lead">
+          <li>
+            <code>aria-busy="true"</code> on the region while it loads, so
+            assistive tech knows the content is in flux.
+          </li>
+          <li>
+            <code>role="status"</code> with <code>aria-live="polite"</code> to
+            announce completion. <strong>Not</strong> <code>assertive</code> —
+            that interrupts whatever the user is reading.
+          </li>
+          <li>
+            A spinner needs an accessible name. A bare spinning div announces
+            nothing at all; give it <code>aria-label="Loading"</code>.
+          </li>
+          <li>
+            Skeletons should be <code>aria-hidden="true"</code>. Announcing
+            twelve empty grey boxes is worse than announcing nothing.
+          </li>
+          <li>
+            <code>&lt;progress&gt;</code> or
+            <code>role="progressbar"</code> with
+            <code>aria-valuenow/min/max</code> for determinate progress.
+          </li>
+        </ul>
+      </section>
+    </main>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cursor &amp; Pointer — Frontend Experimentations</title>
+    <link rel="stylesheet" href="../../src/styles/base.css" />
+    <style>
+      main { max-width: 1080px; margin: 0 auto; padding: 0 var(--pad) 8rem; }
+      section { margin: 4rem 0; }
+      h2 { font-size: 1.25rem; display: flex; gap: 0.7rem; align-items: baseline; }
+      h2 span { font-family: var(--font-mono); font-size: 0.72rem; color: var(--accent-2); }
+      .lead { color: var(--fg-dim); max-width: 66ch; }
+      .callout { border-left: 2px solid var(--accent); padding-left: 1rem; color: var(--fg-dim); font-size: 0.88rem; margin: 1.2rem 0; }
+      pre { overflow-x: auto; background: var(--bg-1); border: 1px solid var(--line); border-radius: var(--radius); padding: 0.9rem 1.1rem; font-size: 0.76rem; }
+
+      /* ══ THE CURSOR ═══════════════════════════════════════════════════════
+         Two elements. The dot tracks exactly — anything slower feels broken,
+         because the user's hand is the ground truth. The ring lags behind at
+         a lerp of ~0.15/frame, and THAT lag is the entire sense of weight. */
+      .cur { position: fixed; top: 0; left: 0; z-index: 9999; pointer-events: none; opacity: 0; transition: opacity 0.25s; }
+      body.cursor-on .cur { opacity: 1; }
+
+      .cur__dot {
+        width: 6px; height: 6px; border-radius: 50%; background: var(--fg);
+        margin: -3px 0 0 -3px;
+      }
+      .cur__ring {
+        width: 34px; height: 34px; border-radius: 50%;
+        border: 1.5px solid var(--fg); margin: -17px 0 0 -17px;
+        /* mix-blend-mode: difference inverts whatever is beneath, so the ring
+           stays visible over any background without needing to know about it.
+           Cost: it forces a stacking context and a compositing pass. */
+        mix-blend-mode: difference;
+        transition: width 0.28s var(--ease-out), height 0.28s var(--ease-out),
+                    margin 0.28s var(--ease-out), border-color 0.28s, background 0.28s, opacity 0.2s;
+        display: grid; place-items: center;
+        font-size: 0.62rem; font-family: var(--font-mono); color: transparent;
+        letter-spacing: 0.04em; text-transform: uppercase;
+      }
+      /* Context states, driven by data-cursor on whatever is hovered. */
+      body[data-cursor='link'] .cur__ring { width: 56px; height: 56px; margin: -28px 0 0 -28px; background: var(--fg); }
+      body[data-cursor='view'] .cur__ring {
+        width: 84px; height: 84px; margin: -42px 0 0 -42px;
+        background: var(--fg); color: var(--bg-0); mix-blend-mode: normal;
+      }
+      body[data-cursor='view'] .cur__ring::after { content: 'view'; color: var(--bg-0); }
+      body[data-cursor='drag'] .cur__ring {
+        width: 70px; height: 70px; margin: -35px 0 0 -35px;
+        background: var(--accent); mix-blend-mode: normal;
+      }
+      body[data-cursor='drag'] .cur__ring::after { content: 'drag'; color: var(--bg-0); }
+      /* Over text inputs the custom cursor is a liability — you need a real
+         caret to know where you are typing. Collapse it and restore the native
+         one. */
+      body[data-cursor='text'] .cur { opacity: 0; }
+      body.cursor-on [data-cursor] { cursor: none; }
+      body.cursor-on [data-cursor='text'] { cursor: text; }
+
+      /* ══ DEMO SURFACES ════════════════════════════════════════════════════ */
+      .surface {
+        position: relative; border: 1px solid var(--line); border-radius: var(--radius);
+        background: var(--bg-1); padding: 2.2rem 1.6rem; min-height: 190px;
+        display: grid; gap: 1rem; place-items: center; align-content: center;
+      }
+      .links { display: flex; gap: 1.6rem; flex-wrap: wrap; justify-content: center; font-size: 1.05rem; }
+      .links a { color: var(--fg); text-decoration: none; border-bottom: 1px solid var(--line); padding-bottom: 2px; }
+      .links a:hover { border-bottom-color: var(--accent); }
+
+      /* ══ MAGNETIC ═════════════════════════════════════════════════════════ */
+      .magnets { display: flex; gap: 2.2rem; flex-wrap: wrap; justify-content: center; }
+      .magnet {
+        font: inherit; font-size: 0.9rem; font-weight: 600; cursor: pointer;
+        padding: 0.8rem 1.6rem; border-radius: 100px;
+        background: var(--bg-2); color: var(--fg); border: 1px solid var(--line);
+        transition: translate 0.45s var(--ease-out), background 0.25s, border-color 0.25s;
+      }
+      .magnet:hover { background: var(--accent); color: oklch(16% 0.03 265); border-color: var(--accent); }
+      .magnet span { display: inline-block; transition: translate 0.45s var(--ease-out); }
+
+      /* ══ TRAIL ════════════════════════════════════════════════════════════ */
+      .trail-surface { padding: 0; overflow: hidden; min-height: 300px; }
+      .trail-surface canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+      .trail-surface p { position: relative; z-index: 2; pointer-events: none; }
+
+      /* ══ SPOTLIGHT ════════════════════════════════════════════════════════ */
+      .spotlight { position: relative; overflow: hidden; min-height: 260px; padding: 0; display: block; }
+      .spotlight__base, .spotlight__top { position: absolute; inset: 0; display: grid; place-items: center; padding: 2rem; text-align: center; }
+      .spotlight__base { background: var(--bg-1); color: var(--fg-faint); font-size: 1.1rem; }
+      .spotlight__top {
+        background: linear-gradient(135deg, var(--accent), var(--accent-3));
+        color: oklch(15% 0.03 265); font-size: 1.4rem; font-weight: 700;
+        -webkit-mask-image: radial-gradient(circle 110px at var(--mx, -300px) var(--my, -300px), #000 0%, transparent 100%);
+        mask-image: radial-gradient(circle 110px at var(--mx, -300px) var(--my, -300px), #000 0%, transparent 100%);
+      }
+
+      /* ══ IMAGE FOLLOW ═════════════════════════════════════════════════════ */
+      .list { display: grid; gap: 0; width: 100%; max-width: 460px; }
+      .list__row {
+        display: flex; justify-content: space-between; align-items: baseline;
+        padding: 1rem 0.3rem; border-bottom: 1px solid var(--line);
+        font-size: 1.15rem; cursor: pointer; color: var(--fg-dim);
+        transition: color 0.25s, padding-left 0.35s var(--ease-out);
+      }
+      .list__row:hover { color: var(--fg); padding-left: 1.1rem; }
+      .list__row small { font-family: var(--font-mono); font-size: 0.68rem; color: var(--fg-faint); }
+      .peek {
+        position: fixed; width: 200px; aspect-ratio: 4/3; border-radius: 10px;
+        pointer-events: none; z-index: 9998; opacity: 0; overflow: hidden;
+        translate: -50% -50%; transition: opacity 0.3s, scale 0.4s var(--ease-out);
+        scale: 0.85; border: 1px solid var(--line);
+      }
+      .peek.on { opacity: 1; scale: 1; }
+      .peek canvas { width: 100%; height: 100%; display: block; }
+
+      .fallback-note {
+        display: none; border: 1px solid oklch(60% 0.15 70 / 0.5);
+        background: oklch(60% 0.15 70 / 0.1); color: oklch(85% 0.09 80);
+        border-radius: var(--radius); padding: 0.9rem 1.1rem; font-size: 0.88rem; margin: 1.2rem 0;
+      }
+      body:not(.cursor-on) .fallback-note { display: block; }
+    </style>
+  </head>
+  <body>
+    <div class="cur cur__wrap" id="cursorDot" aria-hidden="true"><div class="cur__dot"></div></div>
+    <div class="cur cur__wrap" id="cursorRing" aria-hidden="true"><div class="cur__ring"></div></div>
+    <div class="peek" id="peek" aria-hidden="true"></div>
+
+    <div class="note">
+      <h1>Cursor &amp; Pointer</h1>
+      <p>
+        A custom cursor is a fixed element eased toward the real pointer. The
+        dot must track <strong>exactly</strong>; the ring must
+        <strong>lag</strong>. That lag is the whole effect — a 1:1 follow reads
+        as broken, and too much lag reads as unresponsive.
+      </p>
+      <div class="fallback-note">
+        This device has no fine pointer (or you have asked for reduced motion),
+        so every effect on this page has correctly disabled itself and the
+        native cursor is untouched. That fallback is not an afterthought — it
+        is the requirement.
+      </div>
+    </div>
+
+    <main>
+      <section>
+        <h2>1 · Context awareness <span>data-cursor</span></h2>
+        <p class="lead">
+          The ring reads a <code>data-cursor</code> attribute from whatever is
+          under the pointer, rather than matching a hardcoded list of
+          selectors. Adding a new interactive element means adding one
+          attribute, not editing the cursor code.
+        </p>
+        <div class="surface" data-cursor="default">
+          <div class="links">
+            <a href="#1" data-cursor="link">A link</a>
+            <a href="#2" data-cursor="link">Another link</a>
+            <span data-cursor="view" style="padding: .6rem 1rem; border: 1px dashed var(--line); border-radius: 10px">Media area</span>
+            <span data-cursor="drag" style="padding: .6rem 1rem; border: 1px dashed var(--line); border-radius: 10px">Draggable</span>
+          </div>
+          <input type="text" data-cursor="text" placeholder="A text field — native caret returns here"
+                 style="font: inherit; font-size: .85rem; background: var(--bg-2); color: var(--fg); border: 1px solid var(--line); border-radius: 8px; padding: .5rem .8rem; width: min(100%, 340px)" />
+        </div>
+        <p class="callout">
+          Over the text field the custom cursor hides entirely and the native
+          I-beam comes back. You cannot type accurately without a real caret,
+          and no amount of visual flourish is worth that.
+        </p>
+      </section>
+
+      <section>
+        <h2>2 · Magnetic buttons <span>proximity pull</span></h2>
+        <p class="lead">
+          Within ~110px the button eases toward the cursor and its label moves
+          slightly further — that parallax between the two is what makes it
+          read as attraction rather than as drift.
+        </p>
+        <div class="surface" data-cursor="default">
+          <div class="magnets">
+            <button class="magnet" data-magnet type="button"><span>Start a project</span></button>
+            <button class="magnet" data-magnet type="button"><span>See the work</span></button>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>3 · Trail <span>canvas, not DOM</span></h2>
+        <p class="lead">
+          A capped ribbon of past positions, drawn on a canvas. Doing this with
+          DOM nodes means creating and destroying dozens of elements per
+          second, which the compositor will make you pay for.
+        </p>
+        <div class="surface trail-surface" data-cursor="default">
+          <canvas id="trail"></canvas>
+          <p style="color: var(--fg-faint); font-size: .9rem">move across this panel</p>
+        </div>
+      </section>
+
+      <section>
+        <h2>4 · Spotlight reveal <span>mask-image</span></h2>
+        <p class="lead">
+          Two stacked layers; the top one is masked by a radial gradient
+          centred on the pointer. Because it is a mask and not an overlay, the
+          revealed layer can be anything — an image, a video, live content.
+        </p>
+        <div class="surface spotlight" id="spot" data-cursor="view">
+          <div class="spotlight__base">move to reveal what is underneath</div>
+          <div class="spotlight__top">MASKED LAYER</div>
+        </div>
+      </section>
+
+      <section>
+        <h2>5 · Hover peek <span>the portfolio pattern</span></h2>
+        <p class="lead">
+          A preview follows the pointer over a list of links, rotating slightly
+          with pointer velocity so it feels physical. Note that the rows are
+          still real links with real hover styling — the peek is an
+          enhancement, never the only signal.
+        </p>
+        <div class="surface" data-cursor="default">
+          <div class="list" id="list"></div>
+        </div>
+      </section>
+
+      <section>
+        <h2>The rules that make this shippable</h2>
+        <ul class="lead">
+          <li>
+            <strong>Gate everything</strong> behind
+            <code>matchMedia('(hover: hover) and (pointer: fine)')</code>. On
+            touch, hybrid and stylus devices, leave the native cursor alone and
+            disable the lot.
+          </li>
+          <li>
+            <strong>Never <code>cursor: none</code> on <code>body</code>.</strong>
+            Scope it to the elements you have actually replaced. If your script
+            fails to load, a global rule leaves the user with no cursor at all.
+          </li>
+          <li>
+            <strong>Keep the native cursor over text inputs</strong> and any
+            resize or drag affordance the OS already communicates well.
+          </li>
+          <li>
+            <strong>A custom cursor is never the only affordance.</strong>
+            Everything it reacts to must also have a visible hover state and be
+            reachable and operable by keyboard.
+          </li>
+          <li>
+            <strong>Honour <code>prefers-reduced-motion</code></strong> — a
+            lagging, springing follower is exactly the kind of motion that
+            setting exists to suppress.
+          </li>
+          <li>
+            <strong><code>mix-blend-mode</code> is not free.</strong> It creates
+            a stacking context and forces a compositing pass over whatever is
+            beneath. Fine for one small element; do not scatter it.
+          </li>
+        </ul>
+        <pre><code>const fine = matchMedia('(hover: hover) and (pointer: fine)');
+const still = matchMedia('(prefers-reduced-motion: reduce)');
+if (!fine.matches || still.matches) return;   // ← before anything else
+
+// lerp toward the target; the LAG is the effect
+ring.x += (pointer.x - ring.x) * 0.15;
+ring.y += (pointer.y - ring.y) * 0.15;</code></pre>
+      </section>
+    </main>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
