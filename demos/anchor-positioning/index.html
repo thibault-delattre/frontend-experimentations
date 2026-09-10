@@ -122,12 +122,15 @@
         color: var(--fg-dim);
         position-try-fallbacks: --left-side;
       }
+      /* @position-try accepts ONLY positioning descriptors — inset, margin,
+         sizing, position-anchor, position-area and self-alignment. Appearance
+         properties like border or text-align are ignored here, so the flipped
+         side's styling has to be handled elsewhere (or simply kept symmetric,
+         as it is now). */
       @position-try --left-side {
         left: auto;
         right: calc(anchor(left) + 12px);
-        border-left: 0;
-        border-right: 2px solid var(--accent);
-        text-align: right;
+        margin-left: 0;
       }
 
       /* --- Page furniture --------------------------------------------- */
@@ -215,7 +218,7 @@
           there is no room it flips below via
           <code>position-try-fallbacks: flip-block</code>.
         </p>
-        <div class="pad">
+        <div class="pad" data-fx="flipping-tooltip">
           <p>↓ scroll me ↓</p>
           <button
             class="trigger anchored"
@@ -232,7 +235,7 @@
         </div>
       </section>
 
-      <section>
+      <section data-fx="anchor-size-menu">
         <h2>2 · Menu sized from its trigger</h2>
         <p class="lead">
           <code>width: anchor-size(width)</code> makes the panel exactly as wide
@@ -256,8 +259,11 @@
           involved in the positioning, and swaps to the other side via a named
           <code>@position-try</code> block when it runs out of room.
         </p>
-        <div class="drag-area">
-          <span class="spot draggable" id="dot" role="slider" tabindex="0" aria-label="Draggable anchor"></span>
+        <div class="drag-area" data-fx="moving-anchor">
+          <!-- Not role="slider": that models a ONE-dimensional value and requires
+               aria-valuenow, which is meaningless for a 2D position. -->
+          <span class="spot draggable" id="dot" role="button" tabindex="0"
+                aria-label="Draggable anchor point. Use arrow keys to move."></span>
           <div class="callout">
             Positioned entirely by <code>anchor()</code> — drag me to the right
             edge and watch the fallback fire.

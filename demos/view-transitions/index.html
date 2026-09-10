@@ -210,7 +210,7 @@
             Click a card, then click the back button inside the detail.
           </span>
         </div>
-        <div id="gallery"></div>
+        <div id="gallery" data-fx="shared-element-morph"></div>
       </section>
 
       <section>
@@ -225,10 +225,10 @@
           <button id="sort-score" type="button">Sort by score</button>
           <button id="shuffle" type="button">Shuffle</button>
         </div>
-        <ul class="list" id="list"></ul>
+        <ul class="list" id="list" data-fx="list-reorder"></ul>
       </section>
 
-      <section>
+      <section data-fx="cross-document">
         <h2>Cross-document transitions</h2>
         <p class="lead">
           The same effect works between two real navigations in a plain

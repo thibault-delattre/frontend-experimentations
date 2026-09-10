@@ -89,10 +89,10 @@
         reverse coming back up. Each card is offset by
         <code>stagger: 0.08</code>, which GSAP resolves into one tween, not six.
       </p>
-      <div class="cards" id="cards"></div>
+      <div class="cards" id="cards" data-fx="gsap-stagger-reveal"></div>
     </section>
 
-    <section class="pin-wrap" id="pin">
+    <section class="pin-wrap" id="pin" data-fx="gsap-pin-scrub">
       <div class="pin-art" id="pinArt"></div>
       <div class="pin-copy">
         <p class="pin-step">1 · the section pins in place</p>
@@ -102,7 +102,7 @@
       </div>
     </section>
 
-    <div class="h-outer" id="hOuter">
+    <div class="h-outer" id="hOuter" data-fx="gsap-horizontal-scroll">
       <div class="h-track" id="hTrack">
         <div class="h-panel"><span class="h-num">01</span><h3>Horizontal</h3><p>The track is translated on X while the page scrolls on Y. The container is pinned for exactly the track's own width.</p></div>
         <div class="h-panel"><span class="h-num">02</span><h3>Scrub</h3><p><code>scrub: 1</code> adds a one-second catch-up, so the motion has weight instead of being welded to the scrollbar.</p></div>
@@ -114,7 +114,7 @@
     <section>
       <p class="label">03 · counters and per-line text reveal</p>
       <h2 class="split" id="headline">Numbers count when they enter</h2>
-      <div class="stats" id="stats"></div>
+      <div class="stats" id="stats" data-fx="gsap-counters"></div>
     </section>
 
     <section>

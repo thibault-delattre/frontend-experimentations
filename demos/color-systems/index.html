@@ -170,7 +170,7 @@
           each step is the same perceived jump, which is what makes generated
           palettes usable without hand-tuning.
         </p>
-        <div class="ramp" id="ramp"></div>
+        <div class="ramp" id="ramp" data-fx="oklch-ramp"></div>
       </section>
 
       <section>
@@ -181,7 +181,7 @@
           disabled states and borders all derive from a single token, so a
           runtime brand colour still produces a coherent set.
         </p>
-        <div class="rel">
+        <div class="rel" data-fx="relative-color-syntax">
           <div class="b1">base</div>
           <div class="b2">l × 0.55</div>
           <div class="b3">c × 0.25</div>
@@ -198,7 +198,7 @@
           the middle — the "dead zone" that has made two-colour gradients look
           cheap for twenty years.
         </p>
-        <div class="grads">
+        <div class="grads" data-fx="gradient-interpolation">
           <div class="g-srgb">in srgb — note the grey middle</div>
           <div class="g-oklab">in oklab</div>
           <div class="g-oklch">in oklch</div>
@@ -213,7 +213,7 @@
           they are identical, because the fallback declaration is the same
           colour.
         </p>
-        <div class="gamut">
+        <div class="gamut" data-fx="wide-gamut-p3">
           <div class="srgb">rgb(255 0 80)</div>
           <div class="p3">color(display-p3 1 0 .31)</div>
         </div>

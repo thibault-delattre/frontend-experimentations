@@ -1021,4 +1021,2349 @@ Keep the scanline period at 3px or larger; at 2px it aliases badly on
 non-integer device pixel ratios and produces a shimmering moiré when the page
 scrolls.`
   ),
+
+  /* ═══ image-treatment ═════════════════════════════════════════════════ */
+
+  'image-treatment/duotone': fx(
+    'Duotone image, two ways',
+    `Build a duotone treatment mapping an image's shadows to one colour and its
+highlights to another. Implement BOTH approaches and explain the difference.
+
+1. CSS: filter: grayscale(1) contrast(1.25) on the image, then a
+   ::after overlay carrying a two-stop linear-gradient with
+   mix-blend-mode: color. 'color' takes hue and chroma from the top layer and
+   luminance from below, which is exactly a duotone.
+2. SVG: an feColorMatrix that converts to luminance, then feComponentTransfer
+   with a per-channel 'table' of two values — the shadow colour at 0 and the
+   highlight colour at 1.
+
+The SVG version is more faithful because it remaps each channel independently
+rather than compositing a flat colour on top; the CSS version is one line and
+needs no filter definition. Make both hues adjustable.`
+  ),
+
+  'image-treatment/blend-modes': fx(
+    'Blend-mode reference matrix',
+    `Build a grid showing the SAME image under the same gradient overlay in
+eight different mix-blend-mode values, each labelled with what it is actually
+for — not just what it looks like.
+
+Cover: normal, multiply (darkens, keeps shadows), screen (lightens, lifts
+blacks), overlay (multiply in shadows, screen in highlights — contrast),
+soft-light (a gentler overlay, the safe tinting default), color-burn
+(aggressive, heavy saturation), hue (hue from the overlay, luminance from the
+image), luminosity (lightness from the overlay, colour from the image).
+
+The practical point to state: overlay and soft-light perturb luminance while
+preserving the underlying colour, which is what you want for tinting and
+texture. multiply and screen shift the whole surface darker or lighter and will
+quietly break your contrast ratios.
+
+Each cell needs isolation: isolate or the blend escapes to the page behind it.`
+  ),
+
+  'image-treatment/gradient-mask': fx(
+    'Fading an image out with a gradient mask',
+    `Build an image that fades smoothly to nothing at its lower edge, and a
+second one with a radial vignette mask.
+
+The mechanism: mask-image takes the ALPHA of a gradient as a stencil. Unlike a
+gradient overlay painted in the page's background colour, a mask lets whatever
+is actually behind the image show through — so it works on any background,
+including a photo or a gradient.
+
+  mask-image: linear-gradient(to bottom, #000 35%, transparent 95%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 35%, transparent 95%);
+
+Write BOTH the prefixed and unprefixed properties. Omitting the -webkit- form
+makes older Safari show the image completely unmasked — a silent failure, not a
+visible error, which is why it survives review so often.`
+  ),
+
+  'image-treatment/clip-reveal': fx(
+    'clip-path reveal on hover',
+    `Build two image reveals driven by clip-path: a straight inset() wipe and a
+diagonal polygon() sweep.
+
+The mechanism: clip-path is compositor-friendly, so animating it is cheap —
+unlike animating width/height, which forces layout on every frame.
+
+  img { clip-path: inset(0 100% 0 0); transition: clip-path .8s cubic-bezier(.16,1,.3,1); }
+  :hover img, :focus-within img { clip-path: inset(0 0 0 0); }
+
+Requirements:
+- Include :focus-within alongside :hover and make the container focusable, so
+  the reveal is reachable by keyboard rather than being mouse-only.
+- For the polygon variant, keep the SAME NUMBER OF POINTS in both states or the
+  browser cannot interpolate and the shape will snap instead of animating.`
+  ),
+
+  'image-treatment/ken-burns': fx(
+    'Ken Burns slow zoom',
+    `Build a slow, continuous zoom-and-pan across a still image.
+
+The mechanism and its one gotcha: the image must START oversized. Animate scale
+from about 1.15 to 1.32 with a small translate. If you begin at scale 1, ANY
+translate immediately drags the image's own edge into frame and exposes the
+container's background — which is the single most common bug in this effect.
+
+  .ken img { scale: 1.15; transform-origin: 60% 40%; animation: ken 18s ease-in-out infinite alternate; }
+  @keyframes ken { from { scale: 1.15; translate: 0 0; } to { scale: 1.32; translate: -3% 2%; } }
+
+Use 'alternate' so it reverses rather than jumping back. Put overflow: clip on
+the container, offset transform-origin away from centre so the motion has a
+direction, and keep it slow — 15-20s. Disable entirely under
+prefers-reduced-motion.`
+  ),
+
+  'image-treatment/has-sibling-dim': fx(
+    'Gallery that dims siblings on hover, no JavaScript',
+    `Build an image gallery where hovering one item desaturates and darkens all
+the others.
+
+The mechanism: :has() lets the CONTAINER ask whether it contains a hovered
+child, so the parent can restyle all its children. Before :has() this required
+a mouseenter listener and a class toggle on the parent.
+
+  .gallery:has(.item:hover) .item        { filter: grayscale(1) brightness(.55); }
+  .gallery:has(.item:hover) .item:hover  { filter: none; scale: 1.03; }
+
+Order matters: the general rule dims everything, then the more specific
+:hover rule restores the hovered one.
+
+Transition filter and scale together (~400ms) so the change reads as one
+gesture. Add :focus-within alongside :hover for keyboard parity.`
+  ),
+
+  'image-treatment/blur-up': fx(
+    'Progressive blur-up image loading',
+    `Build a blur-up placeholder: a tiny blurred thumbnail that cross-fades to
+the full image once it is ready.
+
+The mechanism, and the detail that matters: wait on img.decode(), NOT the load
+event. 'load' fires before the bitmap is decoded and ready to paint, so
+implementations built on it still flash a blank frame on slower devices.
+
+  const full = new Image();
+  full.src = src;
+  await full.decode();          // resolves only when paintable
+  wrapper.classList.add('loaded');
+
+The placeholder is the same image at ~20px wide, upscaled and blurred
+(filter: blur(18px); scale: 1.1 — the scale hides the blur's soft edges). In
+production ship it as an inline base64 data URI in the HTML so it needs no
+request at all.
+
+Cross-fade with opacity on both layers, and reserve the box with aspect-ratio
+so nothing shifts when the image arrives.`
+  ),
+
+  /* ═══ cursor-fx ═══════════════════════════════════════════════════════ */
+
+  'cursor-fx/custom-cursor': fx(
+    'Custom cursor with a lagging ring',
+    `Build a custom cursor: a small dot that tracks the pointer exactly, and a
+larger ring that lags behind it.
+
+The mechanism: the dot is written to the true pointer position every frame with
+no easing — the user's hand is the ground truth and any lag there reads as a
+fault. The ring lerps toward the target:
+
+  ring.x += (pointer.x - ring.x) * 0.15;
+
+That 0.15 IS the effect. At 0.4 the ring is indistinguishable from the dot; at
+0.05 the page feels like it is struggling.
+
+Requirements:
+- Context awareness driven by a data-cursor attribute read from
+  e.target.closest('[data-cursor]') — so adding a new interactive element means
+  adding one attribute, not editing the cursor code.
+- mix-blend-mode: difference keeps the ring visible over any background. Note
+  that it forces a stacking context and a compositing pass.
+- Over text inputs, HIDE the custom cursor and restore the native I-beam. You
+  cannot type accurately without a real caret.
+- Scope cursor: none to the elements you have replaced, never to body — if the
+  script fails to load, a global rule leaves the user with no cursor at all.
+- Gate the whole thing behind '(hover: hover) and (pointer: fine)'.`
+  ),
+
+  'cursor-fx/magnetic-cursor-button': fx(
+    'Buttons that pull toward the cursor',
+    `Build buttons that are attracted to the cursor as it approaches, with the
+label moving further than the button itself.
+
+The mechanism: on each frame, compute the vector from the button's centre to
+the pointer. Inside a radius (~110px plus half the button's size), translate the
+button by vector * 0.22 and its inner label by a further vector * 0.12. That
+PARALLAX between shell and label is what makes it read as magnetic attraction
+rather than the whole element sliding around.
+
+Outside the radius, clear both transforms and let a CSS transition (~450ms,
+ease-out) carry them home.
+
+Listen on the window, not the element — the point is reacting before the
+pointer arrives, and an element only receives its own events. Gate behind
+'(hover: hover) and (pointer: fine)' and disable under prefers-reduced-motion.`
+  ),
+
+  'cursor-fx/cursor-trail': fx(
+    'Canvas ribbon trail following the cursor',
+    `Build a glowing ribbon that trails behind the cursor across a panel.
+
+The mechanism: keep a FIXED-LENGTH array of recent pointer positions (~26) and
+shift the oldest out as new ones arrive. Draw it on a canvas as connected
+segments whose width and alpha ramp from 0 at the tail to full at the head.
+
+Draw on a canvas, not with DOM nodes — a DOM trail creates and destroys dozens
+of elements per second and the compositor will make you pay for it.
+
+Fade the canvas instead of clearing it, using
+globalCompositeOperation = 'destination-out' with a low-alpha fill. That decays
+old pixels without touching the ones being drawn this frame, which is what
+gives the trail its soft tail for free.
+
+Store points in canvas pixel space (multiply by devicePixelRatio) or the trail
+drifts away from the cursor on retina displays.`
+  ),
+
+  'cursor-fx/spotlight-reveal': fx(
+    'Spotlight revealing a hidden layer',
+    `Build two stacked layers where the top one is visible only inside a circle
+following the pointer.
+
+The mechanism: mask-image with a radial-gradient whose centre is driven by
+--mx/--my custom properties written on pointermove.
+
+  .top {
+    mask-image: radial-gradient(circle 110px at var(--mx) var(--my), #000 0%, transparent 100%);
+    -webkit-mask-image: radial-gradient(circle 110px at var(--mx) var(--my), #000 0%, transparent 100%);
+  }
+
+Because it is a mask rather than an overlay, the revealed layer can be
+anything — an image, a video, live text.
+
+Park the centre far off-element on pointerleave so the reveal disappears
+cleanly. Write custom properties rather than restyling the whole mask string,
+and both prefixed and unprefixed forms.`
+  ),
+
+  'cursor-fx/hover-peek': fx(
+    'Image preview following the cursor over a list',
+    `Build a list of links where hovering a row shows a preview image that
+follows the cursor and tilts with pointer velocity.
+
+The mechanism: a fixed-position preview element, positioned near the pointer
+each frame, with a rotation derived from horizontal pointer VELOCITY (the
+per-frame delta, damped toward zero) rather than from position. That is what
+makes it feel like it has weight instead of being pinned.
+
+  peek.style.rotate = clamp(-14, vx * 0.35, 14) + 'deg';
+  vx *= 0.9;   // damp each frame so it settles when the pointer stops
+
+Requirements:
+- Swap the image on pointerenter per row; fade and scale it in.
+- The rows must remain real links with a visible hover state. The peek is an
+  enhancement, never the only affordance.
+- Gate behind '(hover: hover) and (pointer: fine)'.`
+  ),
+
+  /* ═══ theming ═════════════════════════════════════════════════════════ */
+
+  'theming/token-tiers': fx(
+    'Three-tier design token architecture',
+    `Explain and implement a token architecture that survives a real product.
+
+Three tiers:
+1. PRIMITIVES — raw scale values, theme-agnostic. --blue-500 means one specific
+   colour in every theme, forever.
+2. SEMANTIC — role names that repoint per theme: --ui-surface, --ui-text,
+   --ui-accent, --ui-border, --ui-danger.
+3. COMPONENT — consumption. Components reference ONLY tier 2.
+
+The one rule that makes it work: a component may NEVER reference a primitive.
+The moment a card says background: var(--grey-0) it is hardcoded to light mode
+and no amount of theming will move it.
+
+Demonstrate the payoff with a single --brand-h hue variable that re-themes the
+entire mock UI, including the neutrals — tint the greys with a trace of the
+brand hue (chroma ~0.004-0.02) so they belong to the palette instead of sitting
+dead beside it.`
+  ),
+
+  'theming/theme-switcher': fx(
+    'Theme switcher with no flash of wrong theme',
+    `Build a light/dark/system theme switcher that persists across reloads.
+
+THE CRITICAL PART: prevent the flash of wrong theme with a SYNCHRONOUS INLINE
+script in <head>, before any stylesheet. A module script is deferred and runs
+after first paint, so the user sees a flash of the wrong theme before it
+applies.
+
+  <script>
+    const s = localStorage.getItem('theme') || 'system';
+    const dark = s === 'dark' ||
+      (s === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  </script>
+
+Also:
+- Distinguish the stored PREFERENCE from the resolved THEME. "system" must
+  re-resolve when the OS setting changes while the page is open — listen for
+  change on the media query.
+- Set color-scheme per theme, or form controls, scrollbars and the canvas
+  behind the page keep rendering for the opposite theme.
+- Note that dark mode is not an inversion: elevation there needs a lighter fill
+  plus a 1px top rim highlight, not a bigger shadow.
+- If you animate the swap with startViewTransition, catch the rejection on the
+  returned transition's 'finished' promise. Switching again while one is still
+  running skips the old transition and rejects that promise with an AbortError;
+  unhandled, it shows up as a console error every time a user clicks quickly.`
+  ),
+
+  'theming/view-transition-theme': fx(
+    'Theme swap that expands from the click point',
+    `Animate a theme change so the new theme washes over the page from wherever
+the user clicked.
+
+The mechanism: wrap the theme change in document.startViewTransition(), then
+animate ONLY the new snapshot with an expanding clip-path circle centred on the
+click coordinates. Leaving the old snapshot static underneath is what makes it
+read as the new theme being revealed, rather than a cross-fade.
+
+  ::view-transition-old(root) { animation: none; }
+  ::view-transition-new(root) { animation: reveal .55s ease-out; }
+  @keyframes reveal {
+    from { clip-path: circle(0%   at var(--tx) var(--ty)); }
+    to   { clip-path: circle(150% at var(--tx) var(--ty)); }
+  }
+
+Write --tx/--ty as percentages from the click position before starting the
+transition. 150% guarantees the circle covers the furthest corner.
+
+Feature-detect startViewTransition and fall back to an instant swap; skip the
+animation entirely under prefers-reduced-motion.`
+  ),
+
+  'theming/contrast-audit': fx(
+    'Live contrast audit of your own tokens',
+    `Build a table that measures the real contrast ratio of every text/background
+pair in a themed UI, and flags failures.
+
+The mechanism worth knowing: to resolve an arbitrary CSS colour — including
+oklch() and a nested var() chain — to concrete RGB, assign it to a throwaway
+element's color and read getComputedStyle back. The browser does the conversion
+for you, and you measure what was ACTUALLY PAINTED rather than what you think
+the token holds.
+
+  probe.style.color = getComputedStyle(app).getPropertyValue('--ui-text');
+  const rgb = getComputedStyle(probe).color.match(/[\\d.]+/g).map(Number);
+
+Then compute WCAG 2.1 relative luminance and the (L1+0.05)/(L2+0.05) ratio,
+and check each pair against its target (4.5:1 body text, 3:1 for borders and
+large text).
+
+Recompute on every theme change. A theme is not finished until every pair
+passes in every theme.`
+  ),
+
+  /* ═══ type-scale ══════════════════════════════════════════════════════ */
+
+  'type-scale/fluid-scale': fx(
+    'Fluid modular type scale with clamp()',
+    `Build a type scale where every size interpolates smoothly between a mobile
+and a desktop viewport, with NO breakpoints.
+
+The mechanism: each size is clamp(min, preferred, max) where the preferred term
+is the straight line through both endpoints. Solve for it once:
+
+  slope     = (maxSize - minSize) / (maxVw - minVw)
+  intercept = minSize - slope * minVw
+  preferred = intercept + slope * 100vw
+
+Generate every step from ONE ratio (1.2 minor third for UI, 1.333 perfect
+fourth for editorial) as base * ratio^step, and emit them as custom properties.
+
+Two things that matter:
+- Keep the rem intercept in the preferred term. A pure vw value ignores the
+  user's browser font-size setting and is an accessibility failure.
+- Scale the FLUID RANGE with the step: a hero headline should shrink hard on
+  mobile, body copy barely at all. A single travel factor for every step makes
+  small text illegible or huge text absurd.`
+  ),
+
+  'type-scale/measure': fx(
+    'Line length (measure) as a real constraint',
+    `Build a demonstration of measure — the number of characters per line — at
+30ch, 45ch, 65ch and 90ch, each labelled with why it does or does not work.
+
+The rule: 45-75 characters is the comfortable band. Below ~45 the eye returns
+too often and reading becomes choppy; above ~75 it loses its place travelling
+back to the start of the next line.
+
+Set it with max-width in ch units so the constraint tracks the actual font
+rather than a guessed pixel width. Note that ch is the width of the "0" glyph,
+so it is an approximation that varies by typeface — verify with real copy.
+
+Flag each sample as comfortable or not, and colour the marker accordingly, so
+the band is visible rather than asserted.`
+  ),
+
+  'type-scale/vertical-rhythm': fx(
+    'Vertical rhythm from a baseline unit',
+    `Build a text block whose vertical spacing is all derived from one baseline
+unit, with a toggleable baseline-grid overlay to prove it.
+
+The mechanism: set --baseline to line-height x font-size. Body line-height is
+exactly one baseline; headings occupy an integer multiple; every gap between
+blocks is a multiple. Spacing then comes from a rule, not from a decision per
+element.
+
+  .rhythm > * + * { margin-block-start: var(--baseline); }
+  .rhythm p  { line-height: var(--baseline); }
+  .rhythm h4 { line-height: calc(var(--baseline) * 2); }
+
+Render the grid overlay as a repeating-linear-gradient on a pseudo-element with
+pointer-events: none.
+
+State the honest payoff: not mystical alignment, but that you stop deciding
+every gap, and the page stops having eleven slightly different spacings nobody
+chose on purpose.`
+  ),
+
+  'type-scale/text-wrap': fx(
+    'text-wrap: balance and pretty',
+    `Demonstrate the two wrapping properties that fix the ugliest typographic
+defaults, side by side with the unset version.
+
+- text-wrap: balance evens out line lengths across a short block. Use it on
+  HEADINGS. It is capped at a handful of lines because the algorithm is
+  expensive, so it is not for body copy.
+- text-wrap: pretty is the body-copy one. It prevents orphans — a single short
+  word stranded alone on the final line — and improves the rag, without trying
+  to equalise line lengths.
+
+Build two identical cards, one unset and one with balance on the heading and
+pretty on the paragraph, with a heading long enough to wrap to three lines and
+a paragraph that would otherwise orphan its last word.
+
+Both are progressive enhancements: unsupporting browsers simply wrap normally,
+so no @supports guard is needed.`
+  ),
+
+  'type-scale/numerals': fx(
+    'Tabular and old-style numerals',
+    `Demonstrate font-variant-numeric, and when each setting is correct.
+
+- TABULAR figures share one advance width, so digits align in columns. Mandatory
+  for tables, prices, timers, and any number that updates in place — without
+  them a changing figure makes the layout jitter as digit widths change.
+- PROPORTIONAL figures are spaced like letters. Correct in running prose.
+- OLD-STYLE (lowercase) figures have ascenders and descenders and sit at
+  x-height, so they blend into a sentence instead of shouting.
+- LINING figures are uniform cap-height. Correct in UI and headings.
+
+  .table  { font-variant-numeric: lining-nums tabular-nums; }
+  .prose  { font-variant-numeric: oldstyle-nums proportional-nums; }
+
+Build a data table showing proportional vs tabular in adjacent columns so the
+misalignment is directly visible, plus a sentence comparing old-style and
+lining inline. Note it requires a font that ships the relevant glyph sets.`
+  ),
+
+  /* ═══ layout-primitives ═══════════════════════════════════════════════ */
+
+  'layout-primitives/stack': fx(
+    'The Stack — vertical flow with one gap',
+    `Build a layout primitive that applies consistent vertical spacing between
+children and nothing else.
+
+The mechanism is the owl selector:
+
+  .stack > * { margin-block: 0; }
+  .stack > * + * { margin-block-start: var(--space); }
+
+Because it targets only elements PRECEDED by a sibling, the first child never
+contributes a stray gap at the top of its container, and you never need
+:last-child { margin: 0 } to clean up the bottom.
+
+Why this beats gap in some cases: it composes through nesting and works on
+elements that are not flex/grid children, and individual children can override
+--space to create a deliberate exception without breaking the rule.
+
+Keep the primitive doing ONE job — no padding, no colours, no widths. That is
+what lets it nest inside every other layout.`
+  ),
+
+  'layout-primitives/cluster': fx(
+    'The Cluster — things that wrap gracefully',
+    `Build a layout primitive for groups of items of unknown count and length —
+tag lists, button rows, metadata — that wrap onto new lines without looking
+broken.
+
+  .cluster { display: flex; flex-wrap: wrap; gap: var(--space); align-items: center; }
+
+That is the whole thing. The value is in what it avoids: with gap handling both
+axes, wrapped rows are spaced identically to the first row, which margin-based
+approaches get wrong (they leave a doubled or missing gap on wrap).
+
+Add a justify-content option for alignment, and note that align-items: center
+is what keeps mixed-height items (a tag next to a button) visually related.
+
+Demonstrate with 12+ items in a resizable container so the wrapping is visible.`
+  ),
+
+  'layout-primitives/sidebar': fx(
+    'The Sidebar — wrapping driven by content, not viewport',
+    `Build a two-pane layout where the aside wraps to full width when the main
+pane can no longer meet its minimum — with NO media query.
+
+The mechanism, and it is the one that justifies this whole approach:
+
+  .sidebar { display: flex; flex-wrap: wrap; gap: var(--space); }
+  .sidebar > :first-child { flex-basis: 16rem; flex-grow: 1; }
+  .sidebar > :last-child  {
+    flex-basis: 0;
+    flex-grow: 999;            /* take all remaining space when it fits */
+    min-inline-size: 55%;      /* …until this cannot be met, then wrap */
+  }
+
+flex-grow: 999 makes the main pane absorb all free space. min-inline-size sets
+the point at which flex-wrap gives up and moves the aside to its own line.
+
+The breakpoint is therefore a property of the CONTENT, so the same component
+behaves correctly in a modal, a column, or full-width — which a media query
+fundamentally cannot do, because it only knows the viewport.
+
+Demonstrate inside a resizable container, not by resizing the window.`
+  ),
+
+  'layout-primitives/switcher': fx(
+    'The Switcher — row to column, all at once',
+    `Build a layout that flips from a single row to a stacked column in ONE
+step, with no half-wrapped intermediate state where two items share a line and
+a third sits alone.
+
+The mechanism:
+
+  .switcher > * {
+    flex-grow: 1;
+    flex-basis: calc((var(--threshold) - 100%) * 999);
+  }
+
+When the container is narrower than --threshold the expression is a large
+positive number, so every item demands a full line. When it is wider the value
+goes negative, is clamped to zero, and the items share one line. The 999
+multiplier just saturates it past any realistic size, so there is no in-between.
+
+Note the limitation: it works cleanly up to about four or five items; beyond
+that use a grid. And --threshold is a length, not a breakpoint — it describes
+how much room the content needs.`
+  ),
+
+  'layout-primitives/cover': fx(
+    'The Cover — vertical centring with slots',
+    `Build a hero layout with an optional header, a vertically centred principal
+element, and an optional footer, with a guaranteed minimum height.
+
+The mechanism: auto margins in flexbox absorb ALL remaining free space, so a
+single margin-block: auto on the centred child pushes the others to the edges
+regardless of how many there are.
+
+  .cover { display: flex; flex-direction: column; min-block-size: 22rem; padding: var(--space); }
+  .cover > * { margin-block: var(--space); }
+  .cover > :first-child:not(.centre) { margin-block-start: 0; }
+  .cover > :last-child:not(.centre)  { margin-block-end: 0; }
+  .cover > .centre { margin-block: auto; }
+
+Use min-block-size, never height, so the layout still grows if the content
+exceeds it. Padding must be on the container so the centred child is centred
+within the padded box.`
+  ),
+
+  'layout-primitives/reel': fx(
+    'The Reel — horizontal scroll with snap',
+    `Build a horizontally scrolling row of items with scroll snapping.
+
+  .reel {
+    display: flex; gap: var(--space);
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+  }
+  .reel > * { flex: 0 0 14rem; scroll-snap-align: start; }
+
+Details that matter:
+- overscroll-behavior-x: contain stops an overscroll at the end of the reel from
+  triggering the browser's back-navigation gesture — the single most annoying
+  bug in horizontal carousels on trackpads.
+- flex: 0 0 <size> prevents items from shrinking to fit, which is what makes it
+  scroll rather than compress.
+- Keep the native scrollbar or provide visible controls. Hiding the scrollbar
+  with no other affordance leaves keyboard and unfamiliar users stuck.
+- The container must be focusable or contain focusable children so it can be
+  scrolled with a keyboard.`
+  ),
+
+  'layout-primitives/autofit-autofill': fx(
+    'Grid auto-fit vs auto-fill',
+    `Demonstrate the difference between auto-fit and auto-fill, which is
+invisible until there are fewer items than would fill a row.
+
+  repeat(auto-fit,  minmax(11rem, 1fr))   /* empty tracks COLLAPSE  */
+  repeat(auto-fill, minmax(11rem, 1fr))   /* empty tracks are KEPT  */
+
+With auto-fit the leftover tracks collapse to zero and the existing items
+stretch to fill the row. With auto-fill the empty tracks are retained, so items
+keep their natural size and the row ends with empty space.
+
+When to use which:
+- auto-fit for galleries and dashboards, where filling the row looks intentional.
+- auto-fill for product grids and card lists, where a single stretched card
+  looks wrong and consistent item size matters more.
+
+Demonstrate with THREE items in a wide resizable container — with a full row of
+items the two are identical and the demo proves nothing.`
+  ),
+
+  /* ═══ color-harmony ═══════════════════════════════════════════════════ */
+
+  'color-harmony/harmony-schemes': fx(
+    'Colour harmony schemes as hue arithmetic',
+    `Build a generator producing complementary, split-complementary, triadic,
+analogous and tetradic palettes from one seed hue.
+
+The mechanism is plain arithmetic on the hue angle — complementary is h+180,
+triadic h+120/h+240, analogous h±30, tetradic h+90/h+180/h+270.
+
+The part that actually matters: keep LIGHTNESS AND CHROMA FIXED while only the
+hue moves. That is what makes the results feel like one family. This works in
+OKLCH and not in HSL, because rotating HSL's hue at fixed lightness changes
+apparent brightness dramatically — yellow at 50% reads far brighter than blue
+at 50%.
+
+Then vary lightness deliberately ACROSS the set (e.g. 72/60/48/82) so it reads
+as a usable palette with hierarchy rather than four equally loud colours
+competing for attention.`
+  ),
+
+  'color-harmony/oklch-ramp': fx(
+    'A perceptual lightness ramp with chroma tapering',
+    `Build a 12-step lightness ramp in OKLCH, and demonstrate why chroma must
+taper toward both ends.
+
+The mechanism: the sRGB gamut narrows to a point at both extremes of lightness.
+Full chroma at 95% or 10% lightness simply does not exist — the browser clips
+it, and the top and bottom of the ramp turn to mud with adjacent steps becoming
+indistinguishable.
+
+  const taper = l => 0.3 + 0.7 * (1 - (Math.abs(l - 55) / 55) ** 1.5);
+  chroma = baseChroma * taper(lightness);
+
+Render the tapered ramp directly above an untapered one so the clipping is
+visible rather than asserted.
+
+Also detect and mark out-of-gamut steps: convert OKLCH to linear sRGB
+(OKLab matrices) and flag any channel outside 0..1. Space the lightness stops
+densely at the ends where UI needs fine steps and sparsely through the middle.`
+  ),
+
+  'color-harmony/tinted-neutrals': fx(
+    'Tinted neutrals instead of pure grey',
+    `Demonstrate why pure grey looks dead beside a saturated brand colour, and
+how to fix it.
+
+The mechanism: mix a trace of the brand hue into the entire neutral ramp — a
+chroma of roughly 0.004 to 0.02 in OKLCH. Far too little to read as coloured,
+but enough that the greys belong to the same family as the accents.
+
+  --grey-900: oklch(17% 0.014 var(--brand-h));
+
+Build two ramps stacked — pure grey (chroma 0) and tinted — with a slider for
+the tint amount so the difference can be swept from none to obvious. Start it
+around 0.015.
+
+The practical consequence: because the neutrals derive from the same
+--brand-h as the accents, changing that one variable re-themes surfaces,
+borders and text together instead of leaving dead grey next to a new brand
+colour.`
+  ),
+
+  'color-harmony/semantic-roles': fx(
+    'Mapping a ramp to semantic roles',
+    `Build the indirection layer between a colour ramp and the components that
+consume it.
+
+The mechanism: components reference ROLES, never ramp steps. Define surface,
+surface-raised, border, text, text-muted, accent, accent-hover, on-accent,
+danger and success, each pointing at a step. Then build a small mock UI — nav,
+cards, form, table, chart — that consumes only the role names.
+
+Why: it is what allows a full re-theme by changing one hue variable, and what
+stops "the blue one" being hardcoded in forty components. A component that says
+background: var(--grey-0) is hardcoded to light mode forever.
+
+Include a copy-to-clipboard that emits the whole thing as CSS custom
+properties, with the primitives and the semantic roles in separate labelled
+blocks.`
+  ),
+
+  'color-harmony/apca-contrast': fx(
+    'Live APCA and WCAG contrast checking',
+    `Build a live contrast audit for every text/background pair in a palette,
+reporting both APCA and WCAG 2.1.
+
+Implement APCA (W3C draft 0.1.9). Unlike WCAG's symmetric ratio, APCA is
+POLARITY-AWARE — dark-on-light and light-on-dark are computed with different
+exponents, because the eye does not treat them the same. That asymmetry is
+exactly what WCAG 2.1 misses, and why dark themes routinely "pass" WCAG while
+being genuinely hard to read.
+
+  Y = 0.2126729*R^2.4 + 0.7151522*G^2.4 + 0.072175*B^2.4   (per channel, sRGB)
+  clamp very dark values: y > 0.022 ? y : y + (0.022 - y)**1.414
+  normal polarity (dark text on light): (Ybg^0.56 - Ytxt^0.57) * 1.14 - 0.027
+  reverse polarity (light text on dark): (Ybg^0.65 - Ytxt^0.62) * 1.14 + 0.027
+
+Report |Lc|. Thresholds: Lc 90 small body text, 75 larger body, 60 headlines,
+45 large/non-essential, 30 the floor for anything that must be perceived at all
+including borders and disabled states. Show WCAG alongside, since audits still
+require it.`
+  ),
+
+  /* ═══ easing-lab ══════════════════════════════════════════════════════ */
+
+  'easing-lab/easing-curves': fx(
+    'Easing curves plotted and played from one function',
+    `Build a grid of easing curves where each cell plots the curve AND drives a
+moving element with the identical function, so the graph provably is the motion.
+
+The mechanism: define each easing as a plain JS function t => eased. Sample it
+into an SVG path for the plot, and call the same function each frame to
+position the runner.
+
+  let d = '';
+  for (let i = 0; i <= n; i++) {
+    const t = i / n, v = fn(t);
+    d += (i ? 'L' : 'M') + (t * 100) + ',' + (100 - v * 100) + ' ';
+  }
+
+Cover linear, ease-out/in/in-out for quad, cubic, quart, expo and circ, plus
+back, elastic, bounce and steps().
+
+Critical detail: do NOT clip the SVG to the unit box. back, elastic and bounce
+overshoot past 1 and dip below 0, and that overshoot is the entire
+information — clipping it makes them look identical to a plain ease. Use a
+viewBox with generous padding and draw the unit box as a dashed rect.
+
+Show the copyable cubic-bezier() under each, and note which curves cannot be
+expressed as a bezier at all.`
+  ),
+
+  'easing-lab/bezier-editor': fx(
+    'Draggable cubic-bezier editor',
+    `Build an interactive cubic-bezier(x1,y1,x2,y2) editor with two draggable
+control handles and a live preview.
+
+The mechanism that is easy to get wrong: a CSS cubic-bezier is a PARAMETRIC
+curve, so the x you want is not the parameter s. You must invert x(s)=t first —
+Newton's method, ~6 iterations — then evaluate y at that s. Using t directly as
+the parameter makes every curve subtly wrong.
+
+  let s = t;
+  for (let i=0;i<6;i++){ const d = slope(s,x1,x2); if(Math.abs(d)<1e-6) break;
+    s -= (calc(s,x1,x2) - t) / d; }
+  return calc(s,y1,y2);
+
+Constraints on the handles: clamp X to 0..1 (time cannot run backwards) but
+leave Y unbounded — that is precisely how you get anticipation (y1 < 0, the
+element pulls back before moving) and overshoot (y2 > 1).
+
+For SVG pointer handling use createSVGPoint + getScreenCTM().inverse();
+getBoundingClientRect alone gives the wrong scale once a viewBox is involved.`
+  ),
+
+  'easing-lab/spring-curve': fx(
+    'Spring physics plotted, with CSS linear() output',
+    `Build a spring editor with stiffness/damping/mass controls that plots the
+resulting curve and emits a CSS linear() timing function.
+
+The mechanism: solve the damped harmonic oscillator ANALYTICALLY rather than
+integrating, so it can be sampled at any t. Three regimes by damping ratio
+zeta = c / (2*sqrt(k*m)):
+
+  zeta < 1  underdamped:  1 - e^(-zeta*w0*t) * (cos(wd*t) + (zeta*w0/wd)*sin(wd*t))
+  zeta = 1  critically damped: 1 - e^(-w0*t) * (1 + w0*t)
+  zeta > 1  overdamped: two decaying exponentials
+
+where w0 = sqrt(k/m) and wd = w0*sqrt(1-zeta^2).
+
+Report the damping ratio and classify it — underdamped bounces, critically
+damped is the fastest approach with no overshoot, overdamped is sluggish.
+
+Compute the settle time (first t where |x-1| < 0.005 and stays there), then
+sample the curve into ~26 keypoints and emit
+linear(0, 0.32, 0.66, …) — which runs a real spring in pure CSS with no
+JavaScript at all.`
+  ),
+
+  'easing-lab/interruption': fx(
+    'Why springs survive interruption and eases do not',
+    `Build a side-by-side demo proving the practical difference between an
+eased transition and a spring when the target changes mid-flight.
+
+Set up two elements moving between the same two points, one driven by a
+cubic-bezier over a fixed duration and one by a spring. Provide a button that
+retargets both, and invite the user to hammer it.
+
+The mechanism:
+- The EASE restarts from its current position with ZERO velocity. All momentum
+  is discarded, which the eye reads as a stutter.
+- The SPRING keeps both position AND velocity as state, so a new target is
+  absorbed smoothly. Integrate with semi-implicit Euler:
+
+    const a = (target - pos) * stiffness - vel * damping;
+    vel += a * dt;
+    pos += vel * dt;
+
+Clamp dt (~1/30) so a backgrounded tab does not resume with one enormous step.
+
+This is the single strongest practical argument for springs on anything a user
+can interrupt — drags, toggles, anything gesture-driven.`
+  ),
+
+  'easing-lab/steps-timing': fx(
+    'steps() for discrete motion',
+    `Demonstrate the steps() timing function and when it is the correct choice.
+
+The mechanism: steps(n, end) holds each value rather than interpolating, so
+motion advances in visible jumps.
+
+  animation-timing-function: steps(8, end);
+
+Correct for anything genuinely discrete: sprite-sheet animation, typewriter
+text, segment counters, a clock's second hand, deliberately low-framerate
+"stop motion" motion.
+
+The jump-terms matter: 'end' (default) holds the start value and jumps at the
+end of each interval; 'start' jumps immediately; 'jump-none' includes both
+endpoints across n-1 jumps, which is what you want for a progress counter that
+must show both 0 and 100.
+
+Build a runner advancing in 8 discrete steps with a live counter, and contrast
+it with the same movement under a smooth ease so the difference is explicit.`
+  ),
+
+  /* ═══ css-3d ══════════════════════════════════════════════════════════ */
+
+  'css-3d/tilt-card': fx(
+    'Pointer-tilted card with z-layered parallax',
+    `Build a card that tilts toward the pointer, with its internal elements at
+different depths so they parallax correctly during the tilt.
+
+The mechanism, and the line everyone forgets:
+
+  .scene { perspective: 900px; }                  /* on the PARENT */
+  .card  { transform-style: preserve-3d;          /* on the card   */
+           transform: rotateX(var(--rx)) rotateY(var(--ry)); }
+  .layer { transform: translateZ(60px); }         /* real depth    */
+
+Without transform-style: preserve-3d the children collapse onto the card's flat
+face and the parallax disappears entirely. That single declaration is the whole
+difference between real depth and a fake.
+
+Requirements:
+- JavaScript writes only --rx and --ry. Everything else is CSS.
+- Cap rotation at ~14deg. Past roughly 18deg the perspective distortion stops
+  reading as tilt and starts reading as a glitch.
+- Remove the transition while the pointer is moving (so tracking is immediate)
+  and restore it on pointerleave (so the return eases).
+- Invert the X rotation so the card leans TOWARD the cursor, not away.
+- Warn: preserve-3d is flattened by any ancestor with overflow, filter or
+  opacity — the usual reason these effects mysteriously go flat.`
+  ),
+
+  'css-3d/css-cube': fx(
+    'A real cube from six CSS faces',
+    `Build a rotating 3D cube using only CSS transforms.
+
+The mechanism: each face is rotated into its plane, then pushed outward along
+its own local Z by half the edge length.
+
+  .face { position: absolute; inset: 0; }
+  .f1 { transform: rotateY(  0deg) translateZ(var(--half)); }
+  .f2 { transform: rotateY( 90deg) translateZ(var(--half)); }
+  .f3 { transform: rotateY(180deg) translateZ(var(--half)); }
+  .f4 { transform: rotateY(-90deg) translateZ(var(--half)); }
+  .f5 { transform: rotateX( 90deg) translateZ(var(--half)); }
+  .f6 { transform: rotateX(-90deg) translateZ(var(--half)); }
+
+The order matters: rotate THEN translate, because translateZ is applied in the
+already-rotated local space. Reversing them puts every face in the wrong place.
+
+The container needs transform-style: preserve-3d and an ancestor with
+perspective. Use backface-visibility: hidden for opaque faces, or keep them
+semi-transparent to show the construction.
+
+State the limitation: CSS 3D has no z-buffer, so intersecting geometry sorts by
+paint order, not depth.`
+  ),
+
+  'css-3d/flip-card': fx(
+    'Flip card with correct backface handling',
+    `Build a card that flips to reveal its reverse side.
+
+The mechanism:
+
+  .scene { perspective: 1200px; }
+  .card  { position: relative; transform-style: preserve-3d;
+           transition: transform .7s cubic-bezier(.65,0,.35,1); }
+  .scene:hover .card, .scene:focus-within .card { transform: rotateY(180deg); }
+  .face  { position: absolute; inset: 0; backface-visibility: hidden; }
+  .back  { transform: rotateY(180deg); }
+
+backface-visibility: hidden is the load-bearing line. Without it BOTH faces
+render throughout the flip and you see the front's mirror image bleeding
+through the back.
+
+Requirements:
+- Include :focus-within and make the card focusable (tabindex="0"), or the flip
+  is mouse-only.
+- Both faces must be absolutely positioned in the same box, or the card is
+  twice as tall as it should be.
+- Content on the back is still in the accessibility tree while hidden — if that
+  matters, toggle inert or aria-hidden alongside the flip.`
+  ),
+
+  'css-3d/coverflow': fx(
+    'Scroll-driven 3D coverflow',
+    `Build a horizontally scrolling row where each item rotates in 3D according
+to its position in the scrollport — no JavaScript.
+
+The mechanism: a scroll-driven animation on the horizontal axis, where each
+item's own progress through the scroller drives a 3D keyframe.
+
+  .flow { perspective: 1200px; overflow-x: auto; scroll-snap-type: x mandatory; }
+  .item {
+    transform-style: preserve-3d;
+    animation: flow linear both;
+    animation-timeline: view(x);
+    animation-range: cover;
+  }
+  @keyframes flow {
+    0%   { transform: rotateY( 52deg) scale(.8) translateZ(-90px); opacity:.4; }
+    50%  { transform: rotateY(  0deg) scale(1.06) translateZ(60px); opacity: 1; }
+    100% { transform: rotateY(-52deg) scale(.8) translateZ(-90px); opacity:.4; }
+  }
+
+view(x) is what ties it to horizontal position. Because it is scrubbed, it runs
+correctly in both directions with no listener.
+
+Guard with @supports (animation-timeline: view()) so unsupporting browsers get
+a plain flat row rather than items frozen at 40% opacity.`
+  ),
+
+  /* ═══ gooey-morph ═════════════════════════════════════════════════════ */
+
+  'gooey-morph/metaballs': fx(
+    'Metaballs that fuse, from plain DOM elements',
+    `Build a field of circles that melt into one another as they approach, using
+an SVG filter over ordinary divs.
+
+The mechanism — two primitives and one magic number:
+
+  <filter id="goo">
+    <feGaussianBlur in="SourceGraphic" stdDeviation="18" result="blur"/>
+    <feColorMatrix in="blur" mode="matrix" result="goo"
+      values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 26 -12"/>
+    <feComposite in="SourceGraphic" in2="goo" operator="atop"/>
+  </filter>
+
+The blur softens the edges so neighbours overlap; the alpha row (0 0 0 26 -12)
+multiplies alpha by 26 and subtracts 12, which is a very steep ramp — anything
+below ~0.46 goes transparent, anything above goes opaque. Blurred edges
+therefore snap back to a hard outline, and where two blurs OVERLAP the summed
+alpha crosses the threshold and the shapes read as one.
+
+The practical trap: stdDeviation sets the merge REACH. Spread the circles over
+a wide container and they never come within range, so the effect looks like
+plain circles and you will think the filter is broken. Confine them to a band
+roughly 40% of the container's width.
+
+Make the pointer an additional metaball so it fuses with the field.`
+  ),
+
+  'gooey-morph/gooey-menu': fx(
+    'Gooey FAB menu',
+    `Build a floating action button whose menu items separate out of it like
+drops of liquid.
+
+The mechanism: all items start stacked underneath the trigger at a small scale.
+On open they translate outward to their positions and scale to 1. The parent
+carries filter: url(#goo), so during the transition the items are still close
+enough to the trunk for the alpha threshold to fuse them — producing the
+stretching neck that sells the effect.
+
+Open state without JavaScript: drive it from :hover and :focus-within on the
+container, so it is keyboard-accessible for free.
+
+  .fab:hover .item, .fab:focus-within .item { scale: 1; }
+  .fab:hover .item:nth-of-type(1) { translate: -140px 0; }
+
+Two gotchas: text inside a gooey subtree renders through the alpha threshold
+and turns to mush, so keep labels outside the filtered element or on a sibling
+layer above it. And give each item a real aria-label, since the icons are
+glyphs.`
+  ),
+
+  'gooey-morph/blob-morph': fx(
+    'Organic blob from animated border-radius',
+    `Build a continuously morphing organic blob shape — with no SVG and no path
+interpolation.
+
+The mechanism: the eight-value form of border-radius. Four horizontal radii, a
+slash, then four vertical radii, animated between three states:
+
+  @keyframes morph {
+    0%,100% { border-radius: 60% 40% 55% 45% / 45% 55% 45% 55%; rotate: 0deg; }
+    33%     { border-radius: 35% 65% 40% 60% / 62% 38% 62% 38%; rotate: 120deg; }
+    66%     { border-radius: 55% 45% 68% 32% / 35% 62% 38% 65%; rotate: 240deg; }
+  }
+
+Adding a slow rotate on top means the silhouette never repeats visibly, because
+the shape cycle and the rotation cycle are out of phase.
+
+This is far cheaper than an SVG path morph and it composites, whereas animating
+a path's 'd' attribute repaints. Fill it with a conic-gradient so the rotation
+is visible in the surface as well as the outline.`
+  ),
+
+  'gooey-morph/displaced-text': fx(
+    'Liquid text via turbulence displacement',
+    `Build a headline whose letterforms ripple and flow.
+
+The mechanism: feTurbulence generates a noise field, and feDisplacementMap uses
+its R and G channels as per-pixel x/y offsets into the source graphic.
+
+  <filter id="warp">
+    <feTurbulence type="fractalNoise" baseFrequency="0.012 0.03" numOctaves="2" seed="3" result="n"/>
+    <feDisplacementMap in="SourceGraphic" in2="n" scale="18"
+                       xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+
+Animating baseFrequency makes it flow — but that re-runs the ENTIRE filter
+graph every frame, which is expensive and often CPU-bound. Drive it only on
+hover, and reset to a static value on leave. Do not animate it ambiently.
+
+An anisotropic baseFrequency (low x, higher y) gives horizontal liquid smear;
+equal values give an even wobble. Keep 'scale' under about 20 or the glyphs
+stop being readable as letters.`
+  ),
+
+  'gooey-morph/grain-overlay': fx(
+    'Film grain over a gradient',
+    `Build a grain overlay that stops a large flat gradient from banding.
+
+The mechanism: high-frequency fractal noise, desaturated, composited over the
+surface.
+
+  <filter id="grain">
+    <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/>
+    <feColorMatrix type="saturate" values="0"/>
+  </filter>
+
+Apply it on a pseudo-element with mix-blend-mode: overlay at roughly 30%
+opacity and pointer-events: none. Overlay perturbs luminance while preserving
+the underlying hue, which is what grain should do — multiply or screen would
+shift the whole surface darker or lighter and quietly break your contrast.
+
+Oversize the overlay (inset: -50%) if you intend to animate its position, so
+translating it never exposes an edge.
+
+For anything large or scrolling, rasterise the filter once into a tiling data:
+URI instead of leaving a live filter attached — SVG filters run on the CPU in
+several engines.`
+  ),
+
+  /* ═══ liquid-glass ════════════════════════════════════════════════════ */
+
+  'liquid-glass/glass-panel': fx(
+    'Liquid glass panel that genuinely refracts',
+    `Build a draggable glass panel that BENDS the content behind it, not merely
+blurs it.
+
+The mechanism: blur alone is glassmorphism and reads as frosted plastic. Real
+glass refracts, which requires an SVG feDisplacementMap inside the
+backdrop-filter chain:
+
+  backdrop-filter: url(#glass-warp) blur(2px) saturate(160%) brightness(1.06);
+
+Build the displacement map so distortion concentrates at the EDGES and is near
+zero in the centre — that is how a real lens behaves. A radial gradient
+rendered to SVG and fed to feDisplacementMap gives exactly that; a uniform
+turbulence field makes the panel look like a bug rather than glass.
+
+Also required to read as glass:
+- A specular highlight tracking the pointer (radial-gradient, mix-blend-mode: overlay).
+- An inset top rim highlight and a darker bottom rim.
+- Two opposing chromatic inset shadows (warm one side, cool the other) for
+  edge dispersion.
+
+Put it over BUSY content — over a flat background the effect is invisible and
+proves nothing.
+
+Performance and support: contain: paint to bound the rasterisation, never stack
+these, and note that Safari does not apply SVG filter references in
+backdrop-filter, so ship a plain blur as the -webkit- fallback.`
+  ),
+
+  'liquid-glass/gooey-merge': fx(
+    'Glass shapes that melt together',
+    `Build two or more shapes that fuse into a single fluid outline as they
+approach — the "liquid" half of the Liquid Glass language.
+
+The mechanism: feGaussianBlur softens the edges, then feColorMatrix applies a
+steep alpha ramp that snaps everything above a threshold back to opaque. Where
+two blurred edges overlap, their summed alpha crosses that threshold and the
+shapes become one.
+
+  <feGaussianBlur stdDeviation="14" result="blur"/>
+  <feColorMatrix in="blur" mode="matrix"
+    values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 26 -12" result="goo"/>
+  <feBlend in="SourceGraphic" in2="goo"/>
+
+stdDeviation controls the merge distance: shapes fuse when the gap between them
+is under roughly twice that value. Too small and nothing merges; too large and
+everything becomes one puddle.
+
+Animate the shapes' positions so they pass through each other, and note that
+the filter must live on the PARENT, not the shapes.`
+  ),
+
+  'liquid-glass/glass-variants': fx(
+    'Frosted vs lens vs chromatic glass',
+    `Build a switcher between three distinct glass treatments so the differences
+are directly comparable, each as one backdrop-filter chain:
+
+1. FROSTED — blur-dominant, no displacement. Cheap, well supported, reads as
+   plastic. This is ordinary glassmorphism.
+     backdrop-filter: blur(20px) saturate(150%);
+2. LENS — a radial displacement map producing strong edge refraction and a
+   clear centre, like a convex lens.
+     backdrop-filter: url(#glass-lens) blur(1px) saturate(180%);
+3. CHROMATIC — displacement plus opposing warm/cool inset shadows on the left
+   and right edges, simulating dispersion through a thick edge.
+
+Build the lens map with feImage carrying an inline SVG radial gradient: mid-grey
+(no displacement) in the centre, shifting toward the channel extremes at the
+rim. Grey is the neutral value because feDisplacementMap treats 0.5 as zero
+offset — which is why a black-to-white gradient pushes hard in both directions
+and a grey-centred one does not.
+
+State the legibility caveat: text behind heavy distortion becomes unreadable at
+certain offsets, so put a near-solid layer behind anything that must be read.`
+  ),
+
+  /* ═══ scroll-driven ═══════════════════════════════════════════════════ */
+
+  'scroll-driven/scroll-progress-bar': fx(
+    'Reading progress bar with no JavaScript',
+    `Build a fixed progress bar at the top of the page that fills as the user
+scrolls — with zero JavaScript.
+
+The mechanism: animation-timeline: scroll() binds an animation's playhead to a
+scroll container's progress instead of to the clock.
+
+  .progress {
+    position: fixed; inset: 0 0 auto; height: 3px;
+    transform-origin: 0 50%; scale: 0 1;
+    animation: grow linear both;
+    animation-timeline: scroll(root block);
+  }
+  @keyframes grow { to { scale: 1 1; } }
+
+scroll(root block) targets the document's block-axis scroll. Use scale rather
+than width — scale is composited, width triggers layout on every frame.
+
+Wrap it in @supports (animation-timeline: scroll()) so unsupporting browsers do
+not get a bar permanently stuck at zero width. Mark it aria-hidden; it is
+decorative and duplicates information the scrollbar already conveys.`
+  ),
+
+  'scroll-driven/reveal-on-scroll': fx(
+    'Scrubbed reveal-on-enter',
+    `Build content that fades and slides in as it enters the viewport — and,
+crucially, runs BACKWARDS when scrolling back up.
+
+The mechanism: animation-timeline: view() measures the element against the
+scrollport. animation-range selects which slice of that pass the keyframes
+cover.
+
+  .reveal {
+    animation: reveal linear both;
+    animation-timeline: view();
+    animation-range: entry 5% entry 60%;
+  }
+  @keyframes reveal { from { opacity: 0; transform: translateY(48px); filter: blur(6px); } }
+
+The ranges are entry / contain / cover / exit. 'entry' runs from the element's
+leading edge touching the scrollport to it being fully inside.
+
+This is SCRUBBED, tied to position — which an IntersectionObserver fundamentally
+cannot do, since that only fires at a threshold and then plays on a clock.
+
+Guard with @supports (animation-timeline: view()), or unsupporting browsers
+leave the content stuck at the 'from' state — permanently invisible.`
+  ),
+
+  'scroll-driven/scroll-parallax': fx(
+    'Multi-layer parallax, CSS only',
+    `Build a depth parallax where several layers travel at different rates as
+the section crosses the viewport.
+
+The mechanism: every layer shares animation-timeline: view() with
+animation-range: cover (the whole time any part of the element is visible), but
+each translates a different distance via its own custom property.
+
+  .layer { animation: rise linear both; animation-timeline: view(); animation-range: cover; }
+  @keyframes rise { from { translate: 0 var(--shift); } to { translate: 0 calc(var(--shift) * -1); } }
+
+Layers are oversized (inset: -20% 0) so their edges never enter frame.
+
+The trap worth stating: overflow: hidden on an ancestor makes it a scroll
+container and can capture the timeline you meant to reach. Use overflow: clip,
+which clips without creating a scroll container.
+
+Animate translate only. Anything that triggers layout will drop frames on the
+scroll thread.`
+  ),
+
+  'scroll-driven/named-scroll-timeline': fx(
+    'Named scroll timeline shared across the DOM',
+    `Build a horizontally scrolling rail with a progress bar that lives OUTSIDE
+the rail's subtree.
+
+The mechanism: a scroller can publish a named timeline that any element may
+attach to by name, which decouples the indicator from the thing it measures.
+
+  .rail  { overflow-x: auto; scroll-timeline: --rail x; }
+  .meter { animation: grow linear both; animation-timeline: --rail; }
+
+Without the name you would have to nest the bar inside the scroller, where it
+would scroll away with the content.
+
+Items inside the rail use view(x) so their own animations are driven by the
+horizontal axis rather than the page's vertical scroll.
+
+Add scroll-snap-type: x mandatory and overscroll-behavior-x: contain — the
+latter stops an overscroll at the end from triggering browser
+back-navigation.`
+  ),
+
+  'scroll-driven/sticky-scrollytelling': fx(
+    'Sticky scrollytelling stage',
+    `Build the "element transforms while the page scrolls past it" pattern — a
+tall track containing a sticky stage.
+
+The mechanism: the TRACK provides the scroll distance; the STAGE sticks inside
+it; the track's own view() progress over its 'contain' range drives the
+animation.
+
+  .track { height: 300vh; position: relative; }
+  .stage { position: sticky; top: 12vh; height: 76vh; overflow: clip; }
+  .thing {
+    animation: spin linear both;
+    animation-timeline: view(root);
+    animation-range: contain;
+  }
+
+'contain' is the phase during which the element is entirely within the
+scrollport — exactly the window in which the stage is stuck, which is why it is
+the right range here.
+
+Track height controls pacing: 300vh means the animation takes two extra
+viewport-heights of scrolling. Keep it under about 400vh or the section feels
+like it has trapped the user.`
+  ),
+
+  /* ═══ view-transitions ════════════════════════════════════════════════ */
+
+  'view-transitions/shared-element-morph': fx(
+    'Card that morphs into a detail view',
+    `Build a grid of cards where clicking one expands it into a detail view,
+with the thumbnail and title MORPHING into the hero image and heading.
+
+The mechanism: document.startViewTransition(cb) snapshots the page, runs cb to
+mutate the DOM, snapshots again, and cross-fades. Any element carrying a
+matching view-transition-name in BOTH snapshots is morphed instead — position,
+size and border-radius all interpolate.
+
+THE CRITICAL DETAIL: two elements may never share a view-transition-name in the
+same snapshot. Naming every card up front therefore breaks it immediately.
+Assign the name to the source element only for the duration of the capture:
+
+  card.querySelector('img').style.viewTransitionName = 'hero-img';
+  document.startViewTransition(() => render());   // clear it in the next render
+
+Also:
+- Give morphing images object-fit: cover on ::view-transition-old/new(name), or
+  they squash while resizing between two aspect ratios.
+- Text that changes size looks better cross-faded than scaled.
+- Feature-detect startViewTransition and fall back to a plain update; skip the
+  transition entirely under prefers-reduced-motion.`
+  ),
+
+  'view-transitions/list-reorder': fx(
+    'Animated list reordering',
+    `Build a sortable list where changing the sort order animates every row to
+its new position.
+
+The mechanism: give each row a view-transition-name derived from a STABLE ID —
+never the array index, which changes under the row as it moves and produces
+either no animation or the wrong one.
+
+  <li style="view-transition-name: row-{item.id}">
+
+Then wrap the sort in startViewTransition and re-render. The browser matches
+old and new snapshots by name and FLIPs each row for you; you write no
+animation code at all.
+
+Requirements:
+- Sort buttons for several keys plus a shuffle, so the reordering is arbitrary.
+- ::view-transition-group(*) to set a shared duration and easing.
+- A slow-motion toggle that multiplies the duration — invaluable for debugging,
+  since transitions are otherwise too fast to inspect.
+- Note the scaling limit: every named element is captured separately, so a list
+  of hundreds of rows will be slow. Virtualise or paginate first.
+- Catch the rejections. Re-sorting while a transition is still running skips
+  the old one, and BOTH its 'ready' and 'finished' promises reject with an
+  AbortError. Unhandled, every impatient click logs a console error:
+    const t = document.startViewTransition(update);
+    t.ready.catch(() => {}); t.finished.catch(() => {});`
+  ),
+
+  'view-transitions/cross-document': fx(
+    'Cross-document view transitions (MPA)',
+    `Set up view transitions between two real page navigations in a plain
+multi-page site — no router, no framework, no JavaScript.
+
+The mechanism: opt in from CSS in BOTH documents.
+
+  @view-transition { navigation: auto; }
+
+Then give the shared element the same view-transition-name on both pages, and
+the browser morphs it across the navigation.
+
+Requirements and constraints:
+- Same-origin only.
+- Both the outgoing and incoming document must opt in; one alone does nothing.
+- To vary the transition by which link was clicked, use the 'pageswap' event on
+  the way out and 'pagereveal' on the way in — set or clear
+  view-transition-name there, and read the navigation's destination URL to
+  decide.
+- Interactive elements are frozen during the transition, and very large pages
+  produce large snapshots that can cause visible jank.
+- Because it is CSS-driven, it degrades to an ordinary navigation in browsers
+  without support.`
+  ),
+
+  /* ═══ anchor-positioning ══════════════════════════════════════════════ */
+
+  'anchor-positioning/flipping-tooltip': fx(
+    'Tooltip that flips away from the viewport edge',
+    `Build a tooltip tethered to a button that repositions itself when it would
+overflow the viewport — replacing a JS positioning library entirely.
+
+The mechanism:
+
+  .trigger { anchor-name: --trigger; }
+  .tip {
+    position: fixed;
+    position-anchor: --trigger;
+    position-area: block-start center;                       /* preferred */
+    position-try-fallbacks: flip-block, flip-inline;         /* retries   */
+  }
+
+position-area is a 3x3 grid around the anchor. When the preferred placement
+overflows, the browser tries each fallback in order and uses the first that
+fits. No scroll listener, no resize observer, no getBoundingClientRect.
+
+Pair it with the Popover API (popover + popovertarget) so it lands in the top
+layer — no z-index war, plus light-dismiss and focus management for free.
+
+Animate open/close with @starting-style and
+transition-behavior: allow-discrete, since popovers toggle display and there is
+otherwise no 'from' frame to animate out of.
+
+Requires position: absolute or fixed. Feature-detect with
+CSS.supports('anchor-name: --a') and provide a centred fallback.`
+  ),
+
+  'anchor-positioning/anchor-size-menu': fx(
+    'Dropdown sized from its trigger',
+    `Build a dropdown menu that is exactly as wide as the button that opens it,
+at any breakpoint, with no JavaScript measurement.
+
+The mechanism: anchor-size() reads the anchor element's dimensions and can be
+used in any length slot.
+
+  .trigger { anchor-name: --select; }
+  .menu {
+    position: fixed;
+    position-anchor: --select;
+    position-area: block-end span-inline-end;
+    width: anchor-size(width);
+    position-try-fallbacks: flip-block;
+  }
+
+Previously this required a ResizeObserver on the trigger and a JS write to the
+menu's width on every change. Now the relationship is declarative, so it stays
+correct through font swaps, container queries and text changes automatically.
+
+anchor-size() also accepts height, block and inline. Combine with min()/max()
+to clamp — width: max(anchor-size(width), 12rem) gives "at least as wide as the
+trigger, but never uselessly narrow".`
+  ),
+
+  'anchor-positioning/moving-anchor': fx(
+    'Callout tethered to a draggable point',
+    `Build a draggable dot with a label tethered to it that follows
+automatically, and flips to the other side near the edge.
+
+The point of the exercise: the drag handler NEVER touches the callout. It moves
+only the dot. The callout's position is declarative, so it follows for free.
+
+  .dot     { anchor-name: --spot; }
+  .callout {
+    position: absolute;
+    position-anchor: --spot;
+    left: calc(anchor(right) + 12px);
+    top: anchor(center);
+    translate: 0 -50%;
+    position-try-fallbacks: --left-side;
+  }
+  @position-try --left-side {
+    left: auto; right: calc(anchor(left) + 12px);
+  }
+
+anchor() resolves an edge of the anchor's box in any length slot, so an element
+can span BETWEEN two anchors by taking each edge from a different anchor() call.
+
+Implement the drag with setPointerCapture, and give the handle arrow-key
+support — a drag affordance that only responds to a pointer is unfinished.`
+  ),
+
+  /* ═══ kinetic-type ════════════════════════════════════════════════════ */
+
+  'kinetic-type/variable-font-scroll': fx(
+    'Variable font axes driven by scroll',
+    `Build a headline whose weight, width and slant animate as it crosses the
+viewport.
+
+The mechanism: a variable font is a continuous design space, not a set of cuts,
+so font-variation-settings is animatable and interpolates without the popping
+you get when swapping static weights. Drive it from a scroll-driven animation:
+
+  @keyframes fatten {
+    0%   { font-variation-settings: 'wght' 100,  'wdth' 151, 'slnt' 0; }
+    50%  { font-variation-settings: 'wght' 1000, 'wdth' 25,  'slnt' -10; }
+    100% { font-variation-settings: 'wght' 200,  'wdth' 120, 'slnt' 0; }
+  }
+  h2 { animation: fatten linear both; animation-timeline: view(); animation-range: cover; }
+
+The performance caveat, stated plainly: animating font-variation-settings
+triggers layout on every frame. That is acceptable on one headline and is not
+acceptable on a paragraph — for long text, animate transform instead.
+
+Prefer the registered shorthands (font-weight, font-stretch) where they exist:
+they interpolate identically and inherit properly.`
+  ),
+
+  'kinetic-type/per-char-stagger': fx(
+    'Per-character stagger from a single custom property',
+    `Build a headline where each character animates in sequence, using one CSS
+custom property and no timeline library.
+
+The mechanism: JavaScript does exactly one thing — wrap each character in a
+span and set --i to its index. The entire stagger is then arithmetic in CSS:
+
+  span { animation: wave 2.4s ease-in-out infinite; animation-delay: calc(var(--i) * 60ms); }
+
+No per-glyph animation objects, no library, no timeline.
+
+ACCESSIBILITY IS NOT OPTIONAL HERE: splitting text into spans destroys it for
+screen readers, which will announce fourteen separate letters. Put the original
+string in aria-label on the container and mark every generated span
+aria-hidden="true". Show this in the code.
+
+Also re-run any measurement on document.fonts.ready — the web font swap changes
+glyph metrics after first paint.`
+  ),
+
+  'kinetic-type/pointer-proximity-type': fx(
+    'Letters that react to cursor proximity',
+    `Build a headline where each character's weight, width and colour respond to
+how close the cursor is to it.
+
+The mechanism: give each glyph a normalised distance --d (0 = under the cursor,
+1 = far), and map everything from that single number:
+
+  span {
+    font-variation-settings: 'wght' calc(200 + (1 - var(--d)) * 800);
+    color: oklch(calc(70% + (1 - var(--d)) * 25%) ...);
+    transition: font-variation-settings .25s, color .25s;
+  }
+
+THE PERFORMANCE POINT: measure each character's rectangle ONCE, cache the
+centres, and re-measure only on resize and on document.fonts.ready. Calling
+getBoundingClientRect inside pointermove — once per glyph, per event — is what
+makes every naive implementation of this janky.
+
+Reset --d to 1 for all glyphs on pointerleave, or the last hovered state sticks.
+
+Gate behind (hover: hover) and honour prefers-reduced-motion.`
+  ),
+
+  'kinetic-type/velocity-marquee': fx(
+    'Seamless marquee skewed by scroll velocity',
+    `Build an infinite horizontal marquee that skews in response to scroll speed.
+
+Two mechanisms:
+1. SEAMLESS LOOP: duplicate the content list, then translate the track by
+   exactly -50%. Because the second copy is identical, the wrap is invisible.
+     @keyframes marquee { to { translate: -50% 0; } }
+   Use linear timing — any ease makes the seam visible as a stutter.
+2. VELOCITY SKEW: read scrollY inside a requestAnimationFrame loop and diff it
+   against the previous frame, rather than in a scroll handler. Clamp the
+   delta, then ease the skew toward that target so it decays smoothly instead
+   of snapping back:
+     skew += (target - skew) * 0.12;
+     track.style.setProperty('--skew', skew);
+
+Reading scroll position in rAF rather than in a scroll listener keeps the work
+off the scroll thread, which is what stops this from causing the very jank it
+is meant to express.`
+  ),
+
+  /* ═══ bento-grid ══════════════════════════════════════════════════════ */
+
+  'bento-grid/bento-layout': fx(
+    'Asymmetric bento grid',
+    `Build a bento-box dashboard: a grid of tiles with deliberately uneven sizes
+that still reads as ordered.
+
+The mechanism: a fixed column count with per-tile span values, so the rhythm is
+intentional rather than emergent.
+
+  .bento { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;
+           grid-auto-rows: minmax(140px, auto); }
+  .bento > :nth-child(1) { grid-column: span 2; grid-row: span 2; }
+  .bento > :nth-child(2) { grid-column: span 2; }
+
+What makes it look designed rather than random: vary the spans but keep the
+GAP and the corner radius constant, and make sure the largest tile carries the
+most important content. A bento where every tile is a different size and none
+is emphasised is just noise.
+
+Collapse to two columns below ~780px with the spans reset, or the tiles become
+unreadable slivers. Pair it with container queries so each tile restyles from
+its own width.`
+  ),
+
+  'bento-grid/container-query-card': fx(
+    'One card, three layouts, from container queries',
+    `Build a single card component that changes its internal layout based on ITS
+OWN width, not the viewport's.
+
+The mechanism:
+
+  .cell { container-type: inline-size; container-name: cell; }
+  @container cell (min-width: 260px) { .note  { display: block; } }
+  @container cell (min-width: 340px) { .chart { display: block; } }
+  @container cell (min-width: 520px) { .cell  { grid-template-columns: 1fr auto; } }
+
+This is what a media query fundamentally cannot do: the same component in a
+sidebar, a modal and a full-width row adapts correctly with no props, no
+variants, and no knowledge of where it was placed.
+
+Also use container query UNITS — 1cqi is 1% of the container's inline size, so
+font-size: clamp(1.4rem, 11cqi, 3.4rem) scales type with the box rather than
+the window.
+
+Demonstrate it with a resize: horizontal handle on a standalone instance, so a
+viewer can drag one card across all three breakpoints while the window never
+changes size. That is the proof; make it prominent.`
+  ),
+
+  'bento-grid/subgrid-alignment': fx(
+    'Subgrid so card internals align across cards',
+    `Build a row of cards whose headings, bodies and footers line up across
+cards even when the content lengths differ.
+
+The mechanism: the card opts into its PARENT's row tracks rather than defining
+its own.
+
+  .row  { display: grid; grid-template-columns: repeat(3, 1fr); }
+  .card { grid-row: span 3; display: grid; grid-template-rows: subgrid; }
+
+Now every card's title occupies row 1, body row 2, footer row 3 — sized by the
+tallest across all cards. Without subgrid each card lays out independently, so
+a two-line title in one card pushes its body down while its neighbours' stay
+put, and the footers never align.
+
+Requirements:
+- grid-row: span N on the child must match the number of rows it consumes.
+- align-self: end on the footer so it sits at the bottom of its track.
+- Collapse to one column on narrow screens, where the alignment is moot.`
+  ),
+
+  'bento-grid/scroll-state-query': fx(
+    'Sticky header that knows it is stuck',
+    `Build a sticky header that changes appearance — gains a shadow and a
+border — only once it has actually become stuck.
+
+The mechanism: scroll-state container queries. The scroll container declares
+itself queryable, and descendants ask about its scroll state.
+
+  .scroller { container-type: scroll-state; overflow-y: auto; }
+  @container scroll-state(stuck: top) {
+    .sticky-head { box-shadow: 0 8px 20px rgb(0 0 0 / .35); border-bottom-color: …; }
+  }
+
+This used to require a zero-height sentinel element above the header plus an
+IntersectionObserver to detect when it scrolled out — a well-known hack that
+this replaces entirely.
+
+Other states worth mentioning: scroll-state(scrollable: top/bottom) for
+"is there more content in this direction", useful for fading scroll affordances,
+and scroll-state(snapped: x/y).
+
+Transition the shadow and border so the change is not abrupt, and feature-detect
+with CSS.supports('container-type: scroll-state').`
+  ),
+
+  /* ═══ color-systems ═══════════════════════════════════════════════════ */
+
+  'color-systems/oklch-ramp': fx(
+    'Why OKLCH beats HSL for ramps',
+    `Build a side-by-side comparison proving OKLCH's perceptual uniformity.
+
+The demonstration: an HSL hue sweep at fixed saturation and lightness next to
+an OKLCH sweep at fixed chroma and lightness. In HSL, yellow at 50% lightness
+is dramatically brighter than blue at 50% — the "lightness" is a geometric
+construct, not a perceptual one. In OKLCH the whole sweep holds one apparent
+brightness.
+
+That single property is what makes generated palettes tractable: equal steps in
+L look like equal steps, so a ramp needs no hand-tuning, and rotating H to
+re-theme does not silently change contrast.
+
+  oklch(L C H)   L 0-100%   C 0-~0.4   H 0-360deg
+
+Add an interactive lightness ramp with hue and chroma sliders, and taper chroma
+toward both ends — full chroma at 95% or 10% lightness is outside every display
+gamut and clips, turning the ends of the ramp to mud.`
+  ),
+
+  'color-systems/relative-color-syntax': fx(
+    'Relative colour syntax for derived states',
+    `Build hover, active, disabled and border variants derived from ONE base
+colour, so a runtime brand colour still produces a coherent set.
+
+The mechanism: relative colour syntax decomposes an existing colour into
+channel keywords you can do arithmetic on.
+
+  --base:     oklch(62% 0.2 265);
+  --hover:    oklch(from var(--base) calc(l + 0.08) c h);
+  --pressed:  oklch(from var(--base) calc(l * 0.55) c h);
+  --muted:    oklch(from var(--base) l calc(c * 0.25) h);
+  --opposite: oklch(from var(--base) l c calc(h + 180));
+
+This is the feature that makes a CMS-supplied or user-chosen brand colour
+usable: you no longer need to ship five hand-picked hex values per theme,
+because every state is a function of one input.
+
+Contrast it with color-mix(), which blends toward another colour rather than
+transforming channels — color-mix(in oklch, var(--base), white 60%) for tints,
+and note that mixing toward the SURFACE colour rather than pure white keeps
+tints in the palette's family.`
+  ),
+
+  'color-systems/gradient-interpolation': fx(
+    'Gradient interpolation space',
+    `Demonstrate that the same two-colour gradient looks completely different
+depending on the interpolation space.
+
+Build four gradients with IDENTICAL endpoints:
+
+  linear-gradient(90deg in srgb,             red, blue)
+  linear-gradient(90deg in oklab,            red, blue)
+  linear-gradient(90deg in oklch,            red, blue)
+  linear-gradient(90deg in oklch longer hue, red, blue)
+
+The sRGB one drives through a desaturated grey in the middle — the "dead zone"
+that has made two-colour gradients look cheap for twenty years, because sRGB
+interpolates channel values rather than perceptual attributes.
+
+oklab keeps chroma up through the middle. oklch interpolates hue directly, so
+it travels around the colour wheel. 'longer hue' takes the long way round,
+producing a full rainbow between two adjacent colours.
+
+State the practical default: use 'in oklab' for a natural blend between two
+arbitrary colours, and 'in oklch' when you want the hue path itself to be part
+of the design.`
+  ),
+
+  'color-systems/wide-gamut-p3': fx(
+    'Wide-gamut P3 colour with an sRGB fallback',
+    `Build swatches that use colours which simply do not exist in sRGB, with a
+correct fallback.
+
+The mechanism: declare the sRGB value first, then override inside a gamut media
+query. The cascade does the rest — a browser or display without P3 never sees
+the second declaration.
+
+  .swatch { background: rgb(255 0 80); }
+  @media (color-gamut: p3) {
+    .swatch { background: color(display-p3 1 0 0.31); }
+  }
+
+On a P3 display the difference in saturation is obvious; on sRGB the two are
+identical, which is exactly the desired behaviour.
+
+Also worth covering: oklch() can express out-of-sRGB colours directly, and the
+browser gamut-maps them — meaning two different high-chroma OKLCH values can
+render identically on an sRGB screen. Detect it by converting to linear sRGB
+and checking whether any channel falls outside 0..1, and mark such swatches so
+the clipping is visible rather than surprising.`
+  ),
+
+  /* ═══ particle-field ══════════════════════════════════════════════════ */
+
+  'particle-field/flow-field-particles': fx(
+    '100k canvas particles in a flow field',
+    `Build a 2D canvas particle system running 100,000+ particles at 60fps with
+no library.
+
+The mechanisms, all of which matter at this count:
+
+1. ONE typed array, no objects. Store state as [x, y, vx, vy] per particle in a
+   single Float32Array. 100k particle objects means 100k allocations for the GC
+   to walk; one contiguous block stays in cache.
+2. WRITE PIXELS, NOT SHAPES. Get an ImageData once, view its buffer as a
+   Uint32Array, and write one 32-bit value per particle. fillRect per particle
+   costs a state change each time. Note that the byte order is little-endian
+   ABGR when viewed as Uint32.
+3. TRAILS WITH NO HISTORY. Fade the persistent pixel buffer in place each frame
+   rather than clearing it. Crucially, early-out on already-black pixels — most
+   of the buffer is empty and skipping those is what keeps the fade cheap.
+4. Pin the canvas to devicePixelRatio 1. This is CPU fill-rate bound and 4x the
+   pixels buys nothing for 1px points.
+
+The field itself: sample 3D value noise (hashed integer lattice, smoothstep
+interpolation) at (x*scale, y*scale, time) for an angle, accelerate along it,
+and apply drag — without drag the field accelerates forever. Wrap at the edges
+rather than clamping so density stays even.`
+  ),
+
+  /* ═══ ascii-render ════════════════════════════════════════════════════ */
+
+  'ascii-render/ascii-renderer': fx(
+    'Live ASCII renderer for any canvas source',
+    `Build a renderer that converts a live source — an animated canvas or a
+webcam feed — into text, every frame.
+
+The core idea: draw the source into a canvas that is ALREADY only as wide as
+the character grid. The browser's native downscale does the box-averaging for
+you in C++, so you never average pixels in JavaScript.
+
+Then map each pixel's luminance to a glyph from a ramp ordered by ink coverage.
+Use Rec.709 weights (0.2126R + 0.7152G + 0.0722B), not a channel mean — green
+carries most of perceived brightness, and a flat average collapses reds and
+blues into the same glyph.
+
+Three traps that will bite you:
+1. MEASURE the monospace cell aspect ratio from the rendered font rather than
+   assuming 0.5. The error compounds over a hundred rows. Re-measure on
+   document.fonts.ready.
+2. If the output element can grow its container, and the row count derives from
+   that container, the two feed each other and the page HANGS. Give the stage a
+   fixed height, take the output out of flow, and clamp the row count.
+3. Set font-variant-ligatures: none, or a coding font fuses pairs like != and
+   shears the entire grid.
+
+Build the frame as ONE string and assign textContent once. Since the output is
+real text it stays selectable and copyable.`
+  ),
+
+  /* ═══ shader-lab ══════════════════════════════════════════════════════ */
+
+  'shader-lab/fullscreen-shader-harness': fx(
+    'Dependency-free WebGL2 fullscreen shader harness',
+    `Build a minimal WebGL2 harness for running a fullscreen fragment shader,
+with live editing and no libraries.
+
+The mechanism: render a SINGLE OVERSIZED TRIANGLE, not a quad. It covers the
+whole clip volume with no diagonal seam between two triangles, needs no vertex
+buffer at all, and costs one draw call. Generate the positions from gl_VertexID:
+
+  void main() {
+    vec2 p = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2);
+    gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
+  }
+  // then: gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+Uniforms: u_resolution, u_time, u_mouse plus a few scalars — that set covers
+most shader toys.
+
+For live editing, the detail that matters: on a failed compile, KEEP THE
+PREVIOUS PROGRAM. A half-typed edit must never blank the canvas. Print the
+driver's error log and remap its line numbers back into the editor's
+coordinate space by subtracting the length of any prelude you prepend.
+
+Aspect-correct coordinates as (gl_FragCoord.xy * 2.0 - u_resolution) /
+u_resolution.y, so the shape of the output does not depend on the window.`
+  ),
+
+  'shader-lab/shader-techniques': fx(
+    'The four procedural shader techniques worth knowing',
+    `Write four commented GLSL fragment shaders, each demonstrating one
+foundational technique. Assume a fullscreen quad with u_resolution, u_time and
+u_mouse available, plus hash/value-noise/fbm helpers.
+
+1. DOMAIN WARPING — feed fbm's own output back in as its input coordinate:
+   fbm(p + fbm(p + fbm(p))). One level gives flow; two gives the marbled,
+   cloudy structure behind most "organic" shaders. Iñigo Quílez's single most
+   reused idea.
+
+2. SIGNED DISTANCE FIELDS — describe shapes by distance to their surface, then
+   SHADE BY THAT DISTANCE rather than merely thresholding it: contour rings via
+   cos(k*d), a crisp outline via smoothstep on abs(d), and glow via exp(-k*d).
+   Use a smooth-minimum to blend shapes so they melt together:
+     float smin(float a,float b,float k){ float h=clamp(.5+.5*(b-a)/k,0.,1.);
+       return mix(b,a,h)-k*h*(1.-h); }
+
+3. RAYMARCHING — march along the view ray in steps of the SDF's value until you
+   hit something. Full 3D with no geometry. Get normals from central
+   differences of the field, repeat space with mod() to tile infinitely, and
+   apply exponential fog. Understep slightly (d += s * 0.85) when the surface
+   is displaced, or you punch through it.
+
+4. VORONOI — the cell EDGE is the difference between the nearest and
+   second-nearest feature point (d2 - d1), not the distance itself. Animate the
+   feature points to make the cells drift.`
+  ),
+
+  /* ═══ image-displacement ══════════════════════════════════════════════ */
+
+  'image-displacement/displacement-transition': fx(
+    'WebGL image displacement and dissolve transitions',
+    `Build a WebGL2 image viewer with pointer-driven distortion and noise-map
+slide transitions. No library.
+
+Three stacked mechanisms, each a few lines of GLSL:
+
+1. DISPLACE — offset the texture lookup by a value read from a map:
+     float d = texture(u_disp, uv).r;
+     vec2 uvA = uv + normal * (d - 0.5) * strength;
+2. CHROMATIC SPLIT — sample R, G and B at slightly different offsets. This
+   reads as "lens", not "glitch", as long as it stays small.
+3. DISSOLVE — compare the map against the transition progress to get a
+   PER-PIXEL threshold, so the images tear into each other rather than
+   cross-fading uniformly:
+     float m = smoothstep(d - 0.08, d + 0.08, progress);
+
+The details that decide whether it feels expensive:
+- EASE THE POINTER. p += (target - p) * 0.08 each frame. Reading the raw
+  pointer is the whole difference between "weighty" and "twitchy".
+- Ramp displacement up and back down across the transition (sin(p * PI)) so the
+  first and last frames are pristine.
+- Keep the displacement map LOW FREQUENCY — high-frequency noise produces
+  sparkle and aliasing.
+- Compute an object-fit: cover UV transform from the canvas and image aspect
+  ratios; images never match the canvas.
+- Set UNPACK_FLIP_Y_WEBGL and CLAMP_TO_EDGE — displaced lookups routinely run
+  past the edge, and repeat wrapping causes visible seams.`
+  ),
+
+  /* ═══ tsl-material ════════════════════════════════════════════════════ */
+
+  'tsl-material/tsl-node-material': fx(
+    'Three.js TSL node materials',
+    `Build a Three.js scene using TSL (Three Shading Language) node materials on
+WebGPURenderer, with automatic WebGL2 fallback.
+
+The mechanism: TSL expresses shaders as chained JavaScript nodes that compile to
+WGSL or GLSL depending on the active backend — one source, both renderers.
+
+Assigning a node to a specific material SLOT replaces only that stage while
+inheriting the entire PBR pipeline (lighting, shadows, tone mapping, fog),
+which a raw ShaderMaterial forces you to reimplement from scratch:
+
+  const n = mx_fractal_noise_float(positionLocal.mul(freq).add(time), 3);
+  material.positionNode  = positionLocal.add(normalLocal.mul(n).mul(0.3));
+  material.colorNode     = mix(vec3(0.05,0.15,0.5), vec3(0.9,0.35,0.15), n);
+  material.roughnessNode = n.abs().oneMinus();
+  material.emissiveNode  = vec3(0.15,0.4,1).mul(n.max(0).pow(5));
+
+Use uniform(x) for live values — it returns a node whose .value you set from
+JavaScript, with no location lookups.
+
+Two things to state:
+- await renderer.init() before rendering, and report which backend was actually
+  selected.
+- THE GOTCHA: displacing vertices in positionNode does NOT update normals, so
+  the surface lights as if still smooth. Either recompute them from the noise
+  gradient or accept the softer look — but say which and why.
+
+Tessellate densely; vertex displacement is only as smooth as the mesh.`
+  ),
+
+  /* ═══ gpu-particles ═══════════════════════════════════════════════════ */
+
+  'gpu-particles/gpu-compute-particles': fx(
+    'A quarter-million particles in a WebGPU compute shader',
+    `Build a Three.js WebGPU particle system simulating 250k+ particles entirely
+on the GPU.
+
+The mechanism: instancedArray() allocates GPU storage buffers. One compute
+kernel seeds them once, another advances them each frame, and the render
+material reads the SAME buffer via .toAttribute(). Positions never travel to
+the CPU — which is what makes this an order of magnitude faster than a JS loop.
+
+  const positions  = instancedArray(COUNT, 'vec3');
+  const velocities = instancedArray(COUNT, 'vec3');
+  const update = Fn(() => {
+    const p = positions.element(instanceIndex);
+    const v = velocities.element(instanceIndex);
+    v.addAssign(force(p).mul(deltaTime));
+    v.mulAssign(damping);
+    p.addAssign(v.mul(deltaTime));
+  })().compute(COUNT);
+  material.positionNode = positions.toAttribute();
+
+Non-obvious requirements:
+- Seed uniformly INSIDE A BALL: normalize a random vector and scale by
+  cbrt(random). A cube's corners are visibly denser.
+- CLAMP deltaTime inside the kernel (~0.033). A backgrounded tab resumes with
+  one enormous step and flings every particle to infinity.
+- Curl noise: the cross product of finite differences of a noise field is
+  divergence-free, so particles swirl without clumping. The differences are on
+  the order of 0.01, so the multiplier must be LARGE or it reads as a static
+  blob.
+- Render with AdditiveBlending and depthWrite:false — addition is commutative,
+  so there is no sorting problem. Keep per-particle alpha low (~0.25) or dense
+  regions blow out to white.
+- WebGL2 has no compute stage. Detect the fallback and say so on screen.`
+  ),
+
+  /* ═══ glass-refraction ════════════════════════════════════════════════ */
+
+  'glass-refraction/physical-glass': fx(
+    'Physically-based glass: transmission and dispersion',
+    `Build a Three.js scene with genuinely refractive glass using
+MeshPhysicalMaterial's transmission.
+
+  const glass = new THREE.MeshPhysicalMaterial({
+    transmission: 1, ior: 1.52, thickness: 1.5, roughness: 0.04,
+    dispersion: 0.45, iridescence: 0.2, metalness: 0, clearcoat: 1,
+    attenuationColor: new THREE.Color(0x88ccff), attenuationDistance: 2.5,
+  });
+
+What each parameter physically means: transmission is the fraction of light
+passing through rather than reflecting (NOT opacity — transmitted light still
+refracts and tints); ior is how sharply light bends (water 1.33, glass 1.5,
+diamond 2.42); thickness drives both bending and how strongly attenuationColor
+accumulates via Beer-Lambert absorption; dispersion splits wavelengths, which
+is the rainbow in a prism.
+
+TWO THINGS THAT WILL WASTE YOUR AFTERNOON:
+1. An environment map is MANDATORY. scene.environment via PMREMGenerator.
+   Without one, glass renders black.
+2. The effect is entirely a function of what is BEHIND it. Over an empty
+   background a glass ball just looks like a dark sphere. Put busy,
+   high-frequency, brightly coloured content directly behind it.
+
+Costs: transmission renders the opaque scene to an offscreen buffer first, so
+it is a second pass; roughness needs a blurred mip chain; dispersion costs
+three samples instead of one. And transmissive objects cannot refract EACH
+OTHER — they are excluded from the buffer they read.`
+  ),
+
+  /* ═══ post-fx ═════════════════════════════════════════════════════════ */
+
+  'post-fx/tsl-post-processing': fx(
+    'Post-processing stack as TSL nodes',
+    `Build a Three.js post-processing chain — bloom, chromatic aberration, film
+grain, vignette and colour grading — composed as nodes on a single output node
+rather than as a chain of framebuffer passes.
+
+  const scenePass = pass(scene, camera);
+  const colour    = scenePass.getTextureNode();
+  const glow      = bloom(colour, strength, radius, threshold);
+  let out = colour.add(glow);
+  // …everything downstream is ordinary arithmetic on colour
+  post.outputNode = vec4(out, 1);
+
+The old EffectComposer ran a full-screen pass with its own render target per
+effect; here the compiler fuses most of the chain into one fragment shader.
+
+ORDER IS THE ENTIRE LESSON:
+- Bloom must run in LINEAR HDR, BEFORE tone mapping. With values clamped to 1.0
+  there is nothing above the threshold, so you get a uniform haze instead of
+  light. Scene content must have emissive values above 1.0 — but keep them
+  close to the threshold, not far past it, or geometry blows out to a white
+  blob.
+- Grain and vignette must run AFTER, in display space. Grain before tone
+  mapping gets crushed by it; a vignette before it shifts hue as it darkens.
+
+Chromatic aberration must be RADIAL — zero at the centre, growing toward the
+corners, like a real lens. Keep it under ~0.005 of screen width.
+
+Grading: saturation is mix(vec3(luminance), colour, amount); contrast is a
+scale about 0.5.
+
+Implement toggles as a 0/1 uniform multiplying each effect's contribution, so
+switching one off needs no graph rebuild.`
+  ),
+
+  /* ═══ gsap-scrolltrigger ══════════════════════════════════════════════ */
+
+  'gsap-scrolltrigger/gsap-stagger-reveal': fx(
+    'Staggered reveal with toggleActions',
+    `Build a staggered card reveal with GSAP ScrollTrigger that plays forward on
+enter and reverses on the way back up.
+
+  gsap.from('.card', {
+    y: 60, opacity: 0, duration: 0.7, ease: 'power3.out',
+    stagger: 0.08,
+    scrollTrigger: { trigger: '.cards', start: 'top 80%',
+                     toggleActions: 'play none none reverse' },
+  });
+
+toggleActions takes FOUR values, in order: onEnter, onLeave, onEnterBack,
+onLeaveBack. Each is one of play / pause / resume / reverse / restart / none.
+'play none none reverse' is the sensible default — animate in on the way down,
+animate back out on the way up, ignore the other two boundaries.
+
+stagger: 0.08 produces ONE tween with an interpolated offset, not N tweens.
+
+'start: top 80%' reads as "when the trigger's top hits 80% down the viewport".
+
+Note when NOT to use GSAP for this: if all you need is a scrubbed reveal, a CSS
+scroll-driven animation does it with zero JavaScript and cannot jank. Reach for
+ScrollTrigger when you need real sequencing, pinning or snapping.`
+  ),
+
+  'gsap-scrolltrigger/gsap-pin-scrub': fx(
+    'Pinned section with a scrubbed timeline',
+    `Build a section that pins in place while a timeline scrubs through several
+stages as the user scrolls.
+
+  const tl = gsap.timeline({
+    scrollTrigger: {
+      trigger: '#pin', start: 'top top', end: '+=2600',
+      pin: true,
+      scrub: 0.8,
+      snap: { snapTo: [0, .33, .66, 1], duration: .3, ease: 'power2.inOut' },
+    },
+  });
+  tl.to('.art', { rotate: 180, scale: 1.25, ease: 'none' }, 0)
+    .to('.art', { rotate: 360, scale: 0.85, ease: 'none' }, 0.5);
+
+Details that matter:
+- scrub as a NUMBER (0.8) adds that many seconds of catch-up smoothing; scrub:
+  true welds it to the scrollbar and feels mechanical.
+- Use ease: 'none' on scrubbed tweens. The scroll position is already the
+  easing; adding another makes the motion feel like it is fighting you.
+- The third argument to .to() is the position parameter — absolute time on the
+  timeline, which is how several tweens overlap on one scroll range.
+- anticipatePin: 1 avoids a one-frame jump on fast scrolls.
+- Pinning changes document height, so call ScrollTrigger.refresh() after fonts
+  load or layout changes.`
+  ),
+
+  'gsap-scrolltrigger/gsap-horizontal-scroll': fx(
+    'Horizontal scroll driven by vertical scrolling',
+    `Build a horizontally scrolling section: pin a container and translate an
+inner track sideways as the page scrolls down.
+
+  const distance = () => track.scrollWidth - innerWidth;
+  gsap.to(track, {
+    x: () => -distance(),
+    ease: 'none',
+    scrollTrigger: {
+      trigger: '#outer', start: 'top top',
+      end: () => '+=' + distance(),
+      pin: true, scrub: 1,
+      invalidateOnRefresh: true,
+    },
+  });
+
+THE KEY DETAIL: pass x and end as FUNCTIONS, and set invalidateOnRefresh: true.
+Function values are re-evaluated on every refresh, so the travel distance
+recalculates on resize. Hardcode them and the section breaks the moment the
+viewport changes — the single most common bug in this pattern.
+
+Setting end to exactly the track's overflow width makes the horizontal motion
+1:1 with vertical scroll, so it feels like direct manipulation rather than a
+ratio.
+
+Accessibility: pinning hijacks scrolling, so keep the section short, never trap
+focus inside it, and provide a reduced-motion path that leaves the track as a
+normal horizontally-scrollable region.`
+  ),
+
+  'gsap-scrolltrigger/gsap-counters': fx(
+    'Animated counters and split-text reveal',
+    `Build numbers that count up when they scroll into view, and a headline that
+reveals word by word from behind a mask.
+
+COUNTERS — the general technique for animating anything that is not a CSS
+property: tween a plain object and write the DOM in onUpdate.
+
+  const value = { n: 0 };
+  gsap.to(value, {
+    n: target, duration: 1.6, ease: 'power2.out',
+    onUpdate: () => el.textContent = value.n.toFixed(digits),
+    scrollTrigger: { trigger: el, start: 'top 85%' },
+  });
+
+Use font-variant-numeric: tabular-nums on the element, or the layout jitters as
+digit widths change during the count.
+
+SPLIT TEXT — wrap each word in an inner span inside an overflow:hidden outer
+span, then animate yPercent from 110 to 0 so the words rise out from behind the
+mask:
+
+  gsap.from('.line > span', { yPercent: 110, duration: .8, ease: 'power4.out', stagger: .06 });
+
+Accessibility: set aria-label to the original string on the container and mark
+the generated spans aria-hidden, or a screen reader announces fragments.`
+  ),
+
+  /* ═══ spring-ui ═══════════════════════════════════════════════════════ */
+
+  'spring-ui/spring-vs-ease': fx(
+    'Spring vs fixed-duration easing',
+    `Build a side-by-side comparison of a spring and a fixed-duration ease
+travelling the same distance, with live stiffness/damping/mass controls.
+
+The conceptual point: a spring has NO DURATION. It has stiffness, damping and
+mass, and it settles when the physics say so. That is why an interrupted spring
+looks right and an interrupted ease does not — the spring carries its current
+velocity into the new target, while the ease restarts from zero velocity and
+visibly stutters.
+
+  animate(el, { x: target }, { type: spring, stiffness: 260, damping: 20, mass: 1 });
+  animate(el, { x: target }, { duration: 0.4, ease: [0.4, 0, 0.2, 1] });
+
+Compute and display the damping ratio, which classifies the whole behaviour:
+
+  zeta = damping / (2 * Math.sqrt(stiffness * mass))
+
+zeta < 1 underdamped (overshoots and bounces), zeta = 1 critically damped (the
+fastest approach with no overshoot), zeta > 1 overdamped (sluggish).
+
+Give the user a button that retargets BOTH mid-flight, so the difference is
+demonstrated rather than asserted.
+
+Sensible UI defaults: stiffness 300, damping 30, mass 1 — then adjust damping
+first. Bounce belongs on playful things, never on a menu someone is waiting for.`
+  ),
+
+  'spring-ui/drag-with-momentum': fx(
+    'Drag with release momentum',
+    `Build a draggable element that carries its throw velocity into a spring
+when released.
+
+The mechanism that makes it feel physical: keep a SHORT HISTORY of pointer
+positions (about six samples) and compute velocity over roughly the last 60ms
+on release. A single frame's delta is far too noisy to use.
+
+  const first = samples[0], last = samples.at(-1);
+  const dt = (last.t - first.t) / 1000;
+  const vx = (last.x - first.x) / dt;       // px per second
+
+Then hand that to the spring as a per-axis initial velocity:
+
+  animate(el, { x: 0, y: 0 }, {
+    type: spring, stiffness: 180, damping: 16,
+    x: { velocity: vx }, y: { velocity: vy },
+  });
+
+Other requirements:
+- setPointerCapture on pointerdown so the drag survives the pointer leaving the
+  element.
+- SOFT BOUNDS: past the wall, movement is damped (multiply the excess by ~0.35)
+  rather than hard-clamped. Hard clamping feels broken; rubber-banding reads as
+  a limit.
+- touch-action: none on the handle, or the browser scrolls instead of dragging.
+- Cancel any in-flight animation on pointerdown so it does not fight the
+  pointer.`
+  ),
+
+  'spring-ui/flip-layout-morph': fx(
+    'Shared-layout morphing with FLIP',
+    `Build a grid of tiles where clicking one expands it into a large overlay,
+morphing smoothly from its original position.
+
+The mechanism is FLIP, and it is worth spelling out because it is the
+foundation of every shared-layout animation:
+
+  F — FIRST:  measure the element where it is now (getBoundingClientRect).
+  L — LAST:   apply the final layout and measure again.
+  I — INVERT: apply a transform that puts it visually back at First.
+  P — PLAY:   animate that transform away to identity.
+
+  const first = tile.getBoundingClientRect();
+  // …move it to its final position/size…
+  const last = clone.getBoundingClientRect();
+  clone.style.transformOrigin = 'top left';
+  clone.style.transform =
+    'translate(' + (first.left-last.left) + 'px,' + (first.top-last.top) + 'px)' +
+    ' scale(' + (first.width/last.width) + ',' + (first.height/last.height) + ')';
+  animate(clone, { x: 0, y: 0, scaleX: 1, scaleY: 1 }, { type: spring, stiffness: 220, damping: 26 });
+
+Only TRANSFORM animates, so the browser never re-lays-out mid-tween — which is
+why FLIP is smooth where animating width/height is not.
+
+Implement the collapse as the same procedure in reverse. Add a scrim, Escape to
+close, and restore focus to the originating tile.`
+  ),
+
+  'spring-ui/hover-press-gestures': fx(
+    'hover() and press() gesture handlers',
+    `Build interactive elements using proper gesture handlers rather than raw
+mouse events, with the Motion library.
+
+  hover(el, (element) => {
+    animate(element, { scale: 1.08 }, { type: spring, stiffness: 400, damping: 20 });
+    return () => animate(element, { scale: 1 }, { type: spring, stiffness: 300, damping: 22 });
+  });
+
+  press(el, (element) => {
+    animate(element, { scale: 0.94 }, { type: spring, stiffness: 700, damping: 30 });
+    return () => animate(element, { scale: 1 }, { type: spring, stiffness: 500, damping: 18 });
+  });
+
+Why these beat mouseenter/mousedown:
+- hover() ignores touch taps. Bind mouseenter and a tap on a phone leaves the
+  element stuck in its hover state until you tap elsewhere.
+- press() handles pointer capture and cancels correctly when the pointer is
+  dragged OFF the element before release — the behaviour a real button has.
+- Both return a cleanup function, and the callback returns its own "end"
+  handler, so state cannot leak.
+
+Note the asymmetric springs above: enter/press is stiffer and faster than the
+return. That asymmetry is what makes it feel responsive rather than springy.`
+  ),
+
+  /* ═══ smooth-scroll ═══════════════════════════════════════════════════ */
+
+  'smooth-scroll/lenis-parallax': fx(
+    'Lenis smooth scroll driving depth parallax',
+    `Build a smooth-scrolling page with Lenis where multiple layers translate at
+different rates.
+
+  const lenis = new Lenis({ lerp: 0.1, smoothWheel: true, syncTouch: false });
+  function frame(time) { lenis.raf(time); requestAnimationFrame(frame); }
+  requestAnimationFrame(frame);
+
+  lenis.on('scroll', ({ scroll }) => {
+    for (const layer of layers)
+      layer.style.transform =
+        'translate3d(0,' + (scroll * layer.dataset.depth) + 'px,0)';
+  });
+
+Rules that decide whether this works or ruins the page:
+- ONE requestAnimationFrame loop calling lenis.raf(time) with the RAW
+  millisecond timestamp. A second competing loop is the most common source of
+  stutter in Lenis projects.
+- Derive every effect from the single 'scroll' event rather than adding more
+  scroll listeners.
+- syncTouch: false — mobile browsers already scroll well, and overriding it
+  costs the address-bar collapse.
+- Call lenis.resize() from a ResizeObserver and on document.fonts.ready, or the
+  cached document height goes stale and the page stops short of the bottom.
+- Under prefers-reduced-motion, do not instantiate Lenis AT ALL. Hijacked
+  scrolling is exactly what that setting exists for.
+- Be honest about the cost: it breaks find-in-page, scroll restoration and
+  native anchor jumps, and it is incompatible with CSS scroll-driven
+  animations, which read the real scroll offset.`
+  ),
+
+  'smooth-scroll/velocity-skew': fx(
+    'Content that skews with scroll velocity',
+    `Build content that leans into the scroll — a small skew proportional to
+scroll speed, decaying back to zero when it stops.
+
+The mechanism: read velocity from the scroll event (or diff scrollY inside a
+rAF loop), clamp it, and EASE the skew toward that target rather than setting
+it directly:
+
+  const target = Math.max(-8, Math.min(8, velocity * 0.35));
+  skew += (target - skew) * 0.15;
+  el.style.transform = 'skewY(' + skew + 'deg)';
+
+The easing is what makes it decay smoothly instead of snapping back the instant
+scrolling stops.
+
+Pair it with a slight scale-down at high velocity for a sense of inertia:
+scale = 1 - min(abs(velocity) * 0.0015, 0.06).
+
+Keep the maximum skew SMALL — 8 degrees is plenty. Past about 12 the text
+becomes hard to read and it stops reading as physics and starts reading as a
+broken transform. Add will-change: transform on the skewed element, and skip
+the effect entirely under prefers-reduced-motion.`
+  ),
+
+  'smooth-scroll/sticky-depth-stack': fx(
+    'Sticky cards that recede as the next arrives',
+    `Build a stack of full-height cards that stick in place and recede in scale
+and brightness as the following card scrolls over them.
+
+The mechanism: each card is position: sticky inside its own tall track. As it
+passes its sticky point, compute how far past it has travelled and map that to
+scale and brightness:
+
+  const r = card.getBoundingClientRect();
+  const past = clamp((stickyTop - r.top) / (r.height * 0.9), 0, 1);
+  card.style.transform = 'scale(' + (1 - past * 0.12) + ') translateY(' + (-past * 40) + 'px)';
+  card.style.filter = 'brightness(' + (1 - past * 0.45) + ')';
+
+Each card needs its own track element (not siblings in one container), or they
+all stick at the same offset and overlap immediately.
+
+Keep the scale reduction modest (~12%) and the brightness drop noticeable —
+brightness does more of the perceptual work than scale, because it reads as
+distance and shadow rather than as the card simply shrinking.
+
+This can be done entirely in CSS with animation-timeline: view() if you are not
+already using a smooth-scroll library — which is the better option when
+available.`
+  ),
+
+  'smooth-scroll/lenis-scrollto': fx(
+    'Programmatic scrolling that matches the manual feel',
+    `Build anchor navigation that scrolls through the smooth-scroll library
+rather than the browser, so programmatic and manual scrolling share one feel.
+
+  lenis.scrollTo(target, {
+    offset: -80,                 // clear a sticky header
+    duration: 1.4,
+    easing: t => Math.min(1, 1.001 - Math.pow(2, -10 * t)),   // expo-out
+  });
+
+Why not native: CSS scroll-behavior: smooth uses the browser's own curve and
+duration, which will visibly differ from the library's easing — and with a
+virtual scroll position active, a native jump fights the library outright and
+can leave the two out of sync.
+
+The offset parameter is what stops the target landing underneath a sticky
+header, which is otherwise a permanent papercut.
+
+Accessibility, and this is the part usually missed: programmatic scrolling does
+not move FOCUS. After scrolling to a section, call focus() on it (adding
+tabindex="-1" if it is not natively focusable), or keyboard users are moved
+visually while their focus stays behind, and the next Tab jumps them back.`
+  ),
 };

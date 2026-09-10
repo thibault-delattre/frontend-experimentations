@@ -26,6 +26,8 @@ This is what makes the repo reusable rather than just readable. The unit is a
 shimmer. Open any demo, hover an individual effect, and a small `✦ prompt`
 badge appears — click it to copy the brief that recreates *that exact thing*.
 
+**141 effects across all 33 demos**, each individually addressable.
+
 Paste it into Claude, ChatGPT, Cursor or v0 and you get a working,
 self-contained implementation back. The prompts never reference this repo, this
 file, or a neighbouring effect, so they survive being pasted into a cold chat.

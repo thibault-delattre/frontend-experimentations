@@ -115,7 +115,7 @@
           <label>duration <input type="range" id="dur" min="200" max="2000" step="50" value="900" /><output id="dur-out"></output></label>
           <button type="button" id="play-all">Play all</button>
         </div>
-        <div class="curves" id="curves"></div>
+        <div class="curves" id="curves" data-fx="easing-curves"></div>
       </section>
 
       <section>
@@ -126,7 +126,7 @@
           is exactly how you get anticipation and overshoot.
         </p>
         <div class="editor">
-          <div class="editor__pad">
+          <div class="editor__pad" data-fx="bezier-editor">
             <svg id="bezier" viewBox="-30 -60 160 220" aria-label="Bezier curve editor"></svg>
           </div>
           <div class="editor__out">
@@ -157,7 +157,7 @@
           <label>mass <input type="range" id="m" min="5" max="50" value="10" /><output id="m-out"></output></label>
         </div>
         <div class="editor">
-          <div class="editor__pad">
+          <div class="editor__pad" data-fx="spring-curve">
             <svg id="spring-plot" viewBox="-30 -70 160 230" aria-label="Spring curve"></svg>
           </div>
           <div class="editor__out">
@@ -183,7 +183,7 @@
           single strongest practical reason to use springs for anything a user
           can interrupt.
         </p>
-        <div class="controls"><button type="button" id="interrupt">Toggle — hammer this button</button></div>
+        <div class="controls" data-fx="interruption"><button type="button" id="interrupt">Toggle — hammer this button</button></div>
         <div class="runner-label"><span>ease · 500ms · restarts each time</span><b>jumpy</b></div>
         <div class="runner-track"><div class="runner-ball" id="int-ease" style="background: var(--fg-faint)"></div></div>
         <div class="runner-label" style="margin-top: 1rem"><span>spring · carries velocity</span><b>continuous</b></div>
@@ -197,7 +197,7 @@
           <code>steps(n, end)</code> holds each value rather than interpolating.
         </p>
         <div class="runner-label"><span>steps(8, end)</span><b id="stepper" style="font-family: var(--font-mono)"></b></div>
-        <div class="runner-track"><div class="runner-ball" id="step-ball" style="background: var(--accent-2)"></div></div>
+        <div class="runner-track" data-fx="steps-timing"><div class="runner-ball" id="step-ball" style="background: var(--accent-2)"></div></div>
         <button class="go" type="button" id="step-play" style="margin-top: 0.8rem">Play</button>
       </section>
 

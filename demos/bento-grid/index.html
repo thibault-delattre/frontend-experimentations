@@ -65,7 +65,6 @@
         color: var(--fg-faint);
       }
       .cell__v {
-        font-size: 1.6rem;
         font-weight: 650;
         letter-spacing: -0.03em;
         /* Container query *units*: 1cqi = 1% of the container's inline size.
@@ -117,7 +116,8 @@
         /* Draw-on with a scroll-driven timeline. */
         stroke-dasharray: 1;
         stroke-dashoffset: 1;
-        pathLength: 1;
+        /* pathLength is an SVG ATTRIBUTE, not a CSS property — it is set on the
+           <path> itself in main.js. Declaring it here does nothing. */
       }
       @supports (animation-timeline: view()) {
         .spark path {
@@ -221,7 +221,7 @@
           own container, so the wide ones render a different layout than the
           narrow ones — same markup, no modifier classes.
         </p>
-        <div class="bento" id="bento"></div>
+        <div class="bento" id="bento" data-fx="bento-layout"></div>
       </section>
 
       <section>
@@ -231,7 +231,7 @@
           340px a sparkline, at 520px it flips to a two-column layout. Written
           once, in the component's own stylesheet.
         </p>
-        <div class="resize" id="resize"></div>
+        <div class="resize" id="resize" data-fx="container-query-card"></div>
       </section>
 
       <section>
@@ -241,7 +241,7 @@
           participate in the parent grid's rows, so titles and footers align
           across cards even when the bodies differ in length.
         </p>
-        <div class="sub">
+        <div class="sub" data-fx="subgrid-alignment">
           <article class="sub__card">
             <h3>Short title</h3>
             <p>One line.</p>
@@ -267,7 +267,7 @@
           <code>@container scroll-state(stuck: top)</code> — the sticky header
           knows it is stuck and grows a shadow. No sentinel element, no observer.
         </p>
-        <div class="scroller">
+        <div class="scroller" data-fx="scroll-state-query">
           <div class="sticky-head">Sticky header</div>
           <ul id="rows"></ul>
         </div>

@@ -80,7 +80,7 @@
           mid-flight — hit <em>launch</em> again before they land — and watch
           which one keeps its momentum.
         </p>
-        <div class="panel" style="margin-top: 1.4rem">
+        <div class="panel" style="margin-top: 1.4rem" data-fx="spring-vs-ease">
           <div class="rowlabel"><span>spring</span><span id="settle">—</span></div>
           <div class="track"><div class="ball" id="ballSpring"></div></div>
           <div class="rowlabel"><span>ease · 400ms</span><span>fixed duration</span></div>
@@ -103,7 +103,7 @@
           initial velocity, so the puck carries the throw and then springs back to
           centre. The whole behaviour is about fifteen lines.
         </p>
-        <div class="arena" id="arena"><div class="puck" id="puck">drag me</div></div>
+        <div class="arena" id="arena" data-fx="drag-with-momentum"><div class="puck" id="puck">drag me</div></div>
       </section>
 
       <section>
@@ -116,7 +116,7 @@
           Only <code>transform</code> is animated, so it never triggers layout
           during the tween.
         </p>
-        <div class="tiles" id="tiles"></div>
+        <div class="tiles" id="tiles" data-fx="flip-layout-morph"></div>
       </section>
 
       <section>
@@ -127,7 +127,7 @@
           pointer capture, cancel on leave, keyboard equivalence — and return a
           cleanup function.
         </p>
-        <div class="gest" id="gest">
+        <div class="gest" id="gest" data-fx="hover-press-gestures">
           <div>hover me</div>
           <div>press me</div>
           <div>both</div>

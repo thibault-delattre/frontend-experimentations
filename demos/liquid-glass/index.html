@@ -270,12 +270,12 @@
 
     <main>
       <section>
-        <div class="stage">
+        <div class="stage" data-fx="glass-panel">
           <div class="stage__type">REFRACT</div>
           <div class="glass" id="glass">
             <span class="glass__label">drag me</span>
           </div>
-          <div class="variants" id="variants">
+          <div class="variants" id="variants" data-fx="glass-variants">
             <button type="button" data-v="" aria-pressed="true">Liquid</button>
             <button type="button" data-v="is-lens">Lens</button>
             <button type="button" data-v="is-chromatic">Chromatic</button>
@@ -293,7 +293,7 @@
           (<code>0 0 0 26 -12</code>) snaps everything above the threshold back
           to opaque — so overlapping blurs become one solid outline.
         </p>
-        <div class="goo"><span></span><span></span><span></span></div>
+        <div class="goo" data-fx="gooey-merge"><span></span><span></span><span></span></div>
       </section>
 
       <section>

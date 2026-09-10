@@ -153,7 +153,7 @@
           never write <code>:last-child { margin: 0 }</code>.
         </p>
         <pre><code>.stack > * + * { margin-block-start: var(--space); }</code></pre>
-        <div class="rs" style="width: 30rem">
+        <div class="rs" style="width: 30rem" data-fx="stack">
           <div class="stack">
             <div class="box"><b>First</b>No margin above me.</div>
             <div class="box"><b>Second</b>One --space above.</div>
@@ -168,7 +168,7 @@
           For tag lists, button rows and metadata — anything where the item
           count is unknown and wrapping must not look broken.
         </p>
-        <div class="rs" style="width: 32rem">
+        <div class="rs" style="width: 32rem" data-fx="cluster">
           <div class="cluster" style="--space: 0.5rem" id="cluster"></div>
         </div>
       </section>
@@ -187,7 +187,7 @@
   flex-grow: 999;              /* eat all remaining space */
   min-inline-size: 55%;        /* …until this cannot be met, then wrap */
 }</code></pre>
-        <div class="rs" style="width: 40rem">
+        <div class="rs" style="width: 40rem" data-fx="sidebar">
           <div class="sidebar">
             <div class="box box--accent"><b>Aside</b>Fixed 16rem basis. Wraps to full width when the main pane runs out of room.</div>
             <div class="box"><b>Main</b>flex-grow: 999 and a 55% minimum. Drag the handle left until this cannot be satisfied — the aside jumps above, all at once.</div>
@@ -212,7 +212,7 @@
           wider the value goes negative, is clamped to zero, and the items
           share one line. The multiplier just saturates it past any real size.
         </p>
-        <div class="rs" style="width: 38rem">
+        <div class="rs" style="width: 38rem" data-fx="switcher">
           <div class="switcher" style="--threshold: 28rem">
             <div class="box"><b>One</b>Equal share.</div>
             <div class="box"><b>Two</b>Equal share.</div>
@@ -228,7 +228,7 @@
           pinned to the bottom, with a guaranteed minimum height.
           <code>margin-block: auto</code> on the centred child does the work.
         </p>
-        <div class="rs" style="width: 34rem">
+        <div class="rs" style="width: 34rem" data-fx="cover">
           <div class="cover" style="--cover-height: 16rem">
             <div class="box" style="text-align: center"><b>Header slot</b></div>
             <div class="cover__centre box box--accent" style="text-align: center">
@@ -245,7 +245,7 @@
           A horizontal row with snap points, contained overscroll so it does not
           trigger browser back-navigation, and items that keep their size.
         </p>
-        <div class="rs" style="width: 36rem">
+        <div class="rs" style="width: 36rem" data-fx="reel">
           <div class="reel" id="reel"></div>
         </div>
       </section>
@@ -258,7 +258,7 @@
         </p>
         <pre><code>grid-template-columns: repeat(auto-fit,  minmax(11rem, 1fr));
 grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));</code></pre>
-        <div class="rs" style="width: 44rem">
+        <div class="rs" style="width: 44rem" data-fx="autofit-autofill">
           <p style="margin: 0 0 0.5rem; font-family: var(--font-mono); font-size: 0.72rem; color: var(--accent-2)">auto-fit — empty tracks collapse, items stretch</p>
           <div class="grid-demo autofit">
             <div class="box"><b>A</b></div><div class="box"><b>B</b></div><div class="box"><b>C</b></div>

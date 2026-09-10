@@ -222,7 +222,7 @@
 
     <main>
       <section>
-        <div class="switcher" id="switcher">
+        <div class="switcher" id="switcher" data-fx="theme-switcher">
           <button type="button" data-theme-btn="light">Light</button>
           <button type="button" data-theme-btn="dark">Dark</button>
           <button type="button" data-theme-btn="system">System</button>
@@ -230,7 +230,7 @@
           <label>brand hue <input type="range" id="hue" min="0" max="359" value="265" /><output id="hue-out"></output></label>
         </div>
 
-        <div class="app" id="app">
+        <div class="app" id="app" data-fx="view-transition-theme">
           <div class="app__bar">
             <span class="app__logo"></span>
             <strong>Northwind</strong>
@@ -278,7 +278,7 @@
 
       <section>
         <h2>The three tiers</h2>
-        <div class="tiers">
+        <div class="tiers" data-fx="token-tiers">
           <div class="tier">
             <b>1 · Primitives</b>
             <p>Raw scale values. No meaning attached, identical in every theme.</p>
@@ -370,7 +370,7 @@
           A theme is not finished until every semantic pair clears contrast in
           <em>every</em> theme. Measured live from the tokens actually in use:
         </p>
-        <table class="contrast">
+        <table class="contrast" data-fx="contrast-audit">
           <thead><tr><th>Pair</th><th class="n">Contrast</th><th>WCAG AA</th></tr></thead>
           <tbody id="contrast"></tbody>
         </table>

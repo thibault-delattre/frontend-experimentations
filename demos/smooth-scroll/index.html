@@ -78,7 +78,7 @@
       </p>
     </div>
 
-    <div class="hero">
+    <div class="hero" data-fx="lenis-parallax">
       <div class="hero__layer" data-depth="0.15"></div>
       <div class="hero__layer" data-depth="0.35"></div>
       <div class="hero__layer" data-depth="0.6"></div>
@@ -97,13 +97,13 @@
           to a small skew and a scale gives the page inertia you can feel
           without any element actually lagging behind.
         </p>
-        <div class="skewed" id="skewed"></div>
+        <div class="skewed" id="skewed" data-fx="velocity-skew"></div>
       </section>
 
       <section>
         <p class="label">02 · sticky depth stack</p>
         <h3>Cards receding as the next arrives</h3>
-        <div class="depth">
+        <div class="depth" data-fx="sticky-depth-stack">
           <div class="depth__item" style="background: linear-gradient(150deg, oklch(50% .2 265), oklch(28% .14 300))">01</div>
         </div>
         <div class="depth">
@@ -122,7 +122,7 @@
           same easing curve as manual scrolling instead of the browser's
           <code>scroll-behavior: smooth</code>.
         </p>
-        <div class="anchors">
+        <div class="anchors" data-fx="lenis-scrollto">
           <button type="button" data-to="top">top</button>
           <button type="button" data-to=".depth">depth stack</button>
           <button type="button" data-to="#caveats">caveats</button>

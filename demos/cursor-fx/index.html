@@ -151,7 +151,7 @@
           selectors. Adding a new interactive element means adding one
           attribute, not editing the cursor code.
         </p>
-        <div class="surface" data-cursor="default">
+        <div class="surface" data-cursor="default" data-fx="custom-cursor">
           <div class="links">
             <a href="#1" data-cursor="link">A link</a>
             <a href="#2" data-cursor="link">Another link</a>
@@ -176,7 +176,7 @@
           read as attraction rather than as drift.
         </p>
         <div class="surface" data-cursor="default">
-          <div class="magnets">
+          <div class="magnets" data-fx="magnetic-cursor-button">
             <button class="magnet" data-magnet type="button"><span>Start a project</span></button>
             <button class="magnet" data-magnet type="button"><span>See the work</span></button>
           </div>
@@ -190,7 +190,7 @@
           DOM nodes means creating and destroying dozens of elements per
           second, which the compositor will make you pay for.
         </p>
-        <div class="surface trail-surface" data-cursor="default">
+        <div class="surface trail-surface" data-cursor="default" data-fx="cursor-trail">
           <canvas id="trail"></canvas>
           <p style="color: var(--fg-faint); font-size: .9rem">move across this panel</p>
         </div>
@@ -203,7 +203,7 @@
           centred on the pointer. Because it is a mask and not an overlay, the
           revealed layer can be anything — an image, a video, live content.
         </p>
-        <div class="surface spotlight" id="spot" data-cursor="view">
+        <div class="surface spotlight" id="spot" data-cursor="view" data-fx="spotlight-reveal">
           <div class="spotlight__base">move to reveal what is underneath</div>
           <div class="spotlight__top">MASKED LAYER</div>
         </div>
@@ -218,7 +218,7 @@
           enhancement, never the only signal.
         </p>
         <div class="surface" data-cursor="default">
-          <div class="list" id="list"></div>
+          <div class="list" id="list" data-fx="hover-peek"></div>
         </div>
       </section>
 

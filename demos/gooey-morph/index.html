@@ -197,7 +197,7 @@
     <main>
       <section>
         <h2>1 · Metaballs over DOM elements</h2>
-        <div class="goo-stage" id="stage"></div>
+        <div class="goo-stage" id="stage" data-fx="metaballs"></div>
         <p class="lead" style="margin-top: 1rem">
           These are ordinary <code>&lt;div&gt;</code>s with
           <code>border-radius: 50%</code>. The parent's
@@ -213,7 +213,7 @@
           liquid. Open state is <code>:hover</code>/<code>:focus-within</code>,
           so it is keyboard-accessible with no JavaScript.
         </p>
-        <div class="fab">
+        <div class="fab" data-fx="gooey-menu">
           <button class="fab__item" type="button" aria-label="Share">↗</button>
           <button class="fab__item" type="button" aria-label="Like">♥</button>
           <button class="fab__item" type="button" aria-label="Save">★</button>
@@ -230,12 +230,12 @@
           vertical) animated between three states. Cheaper than any SVG path
           morph and it composites.
         </p>
-        <div class="blob"></div>
+        <div class="blob" data-fx="blob-morph"></div>
       </section>
 
       <section>
         <h2>4 · Displaced text</h2>
-        <div class="warped">LIQUID</div>
+        <div class="warped" data-fx="displaced-text">LIQUID</div>
         <p class="lead" style="margin-top: 1rem">
           <code>feTurbulence</code> generates a noise field;
           <code>feDisplacementMap</code> uses its red and green channels as
@@ -252,7 +252,7 @@
           <code>overlay</code>. Kills gradient banding on large fills for the
           cost of one composited pseudo-element.
         </p>
-        <div class="grainy">grain over gradient</div>
+        <div class="grainy" data-fx="grain-overlay">grain over gradient</div>
       </section>
 
       <section>

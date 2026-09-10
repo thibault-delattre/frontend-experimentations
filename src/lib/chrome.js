@@ -148,6 +148,17 @@ function mountFxPrompts(slug) {
       openPrompt(key, entry);
     });
     host.append(btn);
+
+    // Several demos rebuild their own markup with `el.innerHTML = …` every
+    // time a slider moves or a toolbar button is clicked, which silently
+    // destroys the badge — it would vanish on first interaction and never
+    // come back. Re-attach it whenever the host's children change.
+    //
+    // This does not recurse: our own append fires the observer, we find the
+    // badge already parented correctly, and do nothing.
+    new MutationObserver(() => {
+      if (btn.parentElement !== host) host.append(btn);
+    }).observe(host, { childList: true });
   }
 
   // A data-fx with no dictionary entry is an authoring mistake, and silently

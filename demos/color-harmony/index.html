@@ -131,7 +131,7 @@
           but keeping lightness and chroma fixed while only the hue moves is
           what makes the results feel like one family.
         </p>
-        <div class="harmonies" id="harmonies"></div>
+        <div class="harmonies" id="harmonies" data-fx="harmony-schemes"></div>
       </section>
 
       <section>
@@ -142,7 +142,7 @@
           bottom of your ramp turn to mud. Tapering chroma toward both ends
           keeps every step inside the gamut.
         </p>
-        <div class="ramps" id="ramps"></div>
+        <div class="ramps" id="ramps" data-fx="oklch-ramp"></div>
         <p class="callout">
           Dots mark swatches outside sRGB. They will still render on a P3
           display; on an sRGB one the browser clips them, which is why two
@@ -157,7 +157,7 @@
           of the seed hue into the neutral ramp — a chroma of 0.004 to 0.02 —
           makes greys belong to the palette. Push the tint slider from 0.
         </p>
-        <div class="neutrals" id="neutrals"></div>
+        <div class="neutrals" id="neutrals" data-fx="tinted-neutrals"></div>
       </section>
 
       <section>
@@ -169,7 +169,7 @@
           you re-theme by changing one number, and it is the entire reason
           design tokens exist.
         </p>
-        <div class="mock" id="mock">
+        <div class="mock" id="mock" data-fx="semantic-roles">
           <div class="mock__bar">
             <span class="mock__dot"></span>
             <strong>Acme Analytics</strong>
@@ -209,7 +209,7 @@
           overrates light-on-dark. WCAG is shown because it is still what most
           audits require.
         </p>
-        <table>
+        <table data-fx="apca-contrast">
           <thead>
             <tr><th>Pair</th><th>Sample</th><th class="n">APCA Lc</th><th class="n">WCAG</th><th>Verdict</th></tr>
           </thead>

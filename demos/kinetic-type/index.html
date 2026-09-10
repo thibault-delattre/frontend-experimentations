@@ -176,7 +176,7 @@
     <main>
       <section>
         <p class="label">01 · scroll drives the weight and width axes</p>
-        <h2 class="axis-scroll">VARIABLE</h2>
+        <h2 class="axis-scroll" data-fx="variable-font-scroll">VARIABLE</h2>
         <p class="lead">
           <code>font-variation-settings</code> inside
           <code>@keyframes</code>, with <code>animation-timeline: view()</code>.
@@ -186,7 +186,7 @@
 
       <section>
         <p class="label">02 · per-character stagger, one custom property</p>
-        <h2 class="split" data-split>KINETIC MOTION</h2>
+        <h2 class="split" data-split data-fx="per-char-stagger">KINETIC MOTION</h2>
         <p class="lead">
           JavaScript does one thing: wrap each character and set
           <code>--i</code>. The delay ramp is
@@ -197,7 +197,7 @@
 
       <section>
         <p class="label">03 · pointer proximity</p>
-        <h2 class="proximity" data-split data-proximity>HOVER ACROSS ME</h2>
+        <h2 class="proximity" data-split data-proximity data-fx="pointer-proximity-type">HOVER ACROSS ME</h2>
         <p class="lead">
           Each glyph gets a normalised distance <code>--d</code>; weight, width
           and colour all read from that single number. Move the pointer slowly —
@@ -207,7 +207,7 @@
 
       <section class="full">
         <p class="label">04 · marquee skewed by scroll velocity</p>
-        <div class="marquee">
+        <div class="marquee" data-fx="velocity-marquee">
           <div class="marquee__track" id="track"></div>
         </div>
         <p class="lead">

@@ -41,6 +41,12 @@
         }
       }
 
+      /* The progress bar is a 3px strip pinned to the very top, so its prompt
+         badge would land underneath the sticky demo bar. Push it clear. */
+      .progress > .fx-btn {
+        top: 52px;
+      }
+
       /* 2 ── REVEAL ON ENTER ──────────────────────────────────────────────
          view() measures this element against the scrollport. animation-range
          picks the slice of that pass to animate over:
@@ -238,7 +244,7 @@
     </style>
   </head>
   <body>
-    <div class="progress" aria-hidden="true"></div>
+    <div class="progress" aria-hidden="true" data-fx="scroll-progress-bar"></div>
 
     <div class="note">
       <h1>Scroll-Driven Animations</h1>
@@ -257,7 +263,7 @@
     </div>
 
     <main>
-      <section class="reveal stack">
+      <section class="reveal stack" data-fx="reveal-on-scroll">
         <h2>1 · Reveal on enter</h2>
         <p class="lead">
           <code>animation-timeline: view()</code> with
@@ -269,7 +275,7 @@
 
       <section class="stack">
         <h2 class="reveal">2 · Depth parallax</h2>
-        <div class="parallax">
+        <div class="parallax" data-fx="scroll-parallax">
           <div class="parallax__layer"></div>
           <div class="parallax__layer"></div>
           <div class="parallax__layer"></div>
@@ -284,7 +290,7 @@
           attaches to it by name from outside the subtree. Cards use
           <code>view(x)</code>.
         </p>
-        <div class="rail">
+        <div class="rail" data-fx="named-scroll-timeline">
           <div class="rail__item">01</div>
           <div class="rail__item">02</div>
           <div class="rail__item">03</div>
@@ -301,7 +307,7 @@
           <code>view()</code> progress over its <code>contain</code> phase drives
           the shape.
         </p>
-        <div class="track">
+        <div class="track" data-fx="sticky-scrollytelling">
           <div class="stage"><div class="cube"></div></div>
         </div>
       </section>

@@ -193,7 +193,7 @@
     <main>
       <section>
         <h2>1 · Pointer-tilted card with z-layered contents</h2>
-        <div class="tilt-scene">
+        <div class="tilt-scene" data-fx="tilt-card">
           <div class="tilt" id="tilt">
             <div class="tilt__layer tilt__ring"></div>
             <div class="tilt__layer tilt__title">DEPTH</div>
@@ -212,7 +212,7 @@
 
       <section>
         <h2>2 · A real cube</h2>
-        <div class="cube-scene">
+        <div class="cube-scene" data-fx="css-cube">
           <div class="cube">
             <div class="f1">front</div><div class="f2">right</div>
             <div class="f3">back</div><div class="f4">left</div>
@@ -228,7 +228,7 @@
 
       <section class="full">
         <h2 style="padding: 0 var(--pad)">3 · Coverflow, driven by scroll</h2>
-        <div class="flow" id="flow"></div>
+        <div class="flow" id="flow" data-fx="coverflow"></div>
         <p class="lead" style="padding: 0 var(--pad)">
           <code>animation-timeline: view(x)</code> plus a 3D keyframe. Scroll the
           strip — each item's rotation is a function of its position in the
@@ -238,7 +238,7 @@
 
       <section>
         <h2>4 · Flip card</h2>
-        <div class="flip-scene">
+        <div class="flip-scene" data-fx="flip-card">
           <div class="flip" tabindex="0">
             <div class="front">hover / focus me</div>
             <div class="back">backface-visibility: hidden</div>

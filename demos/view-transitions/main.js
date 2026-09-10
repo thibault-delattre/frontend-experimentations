@@ -19,7 +19,15 @@ const swatch = (hue) =>
  */
 function transition(update) {
   if (!document.startViewTransition || reducedMotion()) return update();
-  return document.startViewTransition(update);
+
+  const t = document.startViewTransition(update);
+  // Starting a transition while one is still running SKIPS the old one, and
+  // both its `ready` and `finished` promises reject with an AbortError.
+  // Nothing is wrong — the newer transition wins — but unhandled, each rapid
+  // click logs a console error. Catching only one of the two still leaks.
+  t.ready.catch(() => {});
+  t.finished.catch(() => {});
+  return t;
 }
 
 // --- Gallery: card ⇄ detail morph -------------------------------------------

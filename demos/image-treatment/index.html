@@ -154,7 +154,7 @@
         </p>
         <div class="row">
           <figure><div class="frame" data-photo="1"></div><figcaption>original</figcaption></figure>
-          <figure><div class="frame duotone-css" data-photo="1"></div><figcaption>CSS · grayscale + mix-blend-mode: color</figcaption></figure>
+          <figure data-fx="duotone"><div class="frame duotone-css" data-photo="1"></div><figcaption>CSS · grayscale + mix-blend-mode: color</figcaption></figure>
           <figure><div class="frame" data-photo="1" style="filter: url(#duotone-svg)"></div><figcaption>SVG · feComponentTransfer</figcaption></figure>
         </div>
         <div class="controls">
@@ -169,7 +169,7 @@
           The same gradient over the same image, eight ways. These are not
           interchangeable looks — each one preserves something different.
         </p>
-        <div class="row" id="blends"></div>
+        <div class="row" id="blends" data-fx="blend-modes"></div>
       </section>
 
       <section>
@@ -181,7 +181,7 @@
           overlay does not.
         </p>
         <div class="row">
-          <figure><div class="frame mask-fade" data-photo="2"></div><figcaption>linear fade to transparent</figcaption></figure>
+          <figure data-fx="gradient-mask"><div class="frame mask-fade" data-photo="2"></div><figcaption>linear fade to transparent</figcaption></figure>
           <figure><div class="frame mask-vignette" data-photo="2"></div><figcaption>radial vignette mask</figcaption></figure>
           <figure><div class="frame mask-text" id="maskText"><h3>MASK</h3></div><figcaption>background-clip: text</figcaption></figure>
         </div>
@@ -200,9 +200,9 @@
           keyboard — <code>:focus-within</code> alongside <code>:hover</code>.
         </p>
         <div class="row">
-          <figure><div class="frame clip-inset" data-photo="3" tabindex="0"></div><figcaption>inset() wipe</figcaption></figure>
+          <figure data-fx="clip-reveal"><div class="frame clip-inset" data-photo="3" tabindex="0"></div><figcaption>inset() wipe</figcaption></figure>
           <figure><div class="frame clip-poly" data-photo="4" tabindex="0"></div><figcaption>polygon() diagonal</figcaption></figure>
-          <figure><div class="frame ken" data-photo="3"></div><figcaption>Ken Burns — note scale starts at 1.15</figcaption></figure>
+          <figure data-fx="ken-burns"><div class="frame ken" data-photo="3"></div><figcaption>Ken Burns — note scale starts at 1.15</figcaption></figure>
         </div>
         <p class="callout">
           The Ken Burns image starts at <code>scale: 1.15</code>, not 1. Any
@@ -218,7 +218,7 @@
           all of them. This used to require a mouseenter listener and a class
           on the parent.
         </p>
-        <div class="gallery" id="gallery"></div>
+        <div class="gallery" id="gallery" data-fx="has-sibling-dim"></div>
         <pre><code>.gallery:has(.frame:hover) .frame       { filter: grayscale(1) brightness(.55); }
 .gallery:has(.frame:hover) .frame:hover { filter: none; scale: 1.03; }</code></pre>
       </section>
@@ -232,7 +232,7 @@
           so you can still get a blank frame.
         </p>
         <div class="row">
-          <figure>
+          <figure data-fx="blur-up">
             <div class="frame progressive" id="prog"></div>
             <figcaption>placeholder → decoded full image</figcaption>
           </figure>

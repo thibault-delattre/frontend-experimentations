@@ -179,7 +179,7 @@
           decides every size on the page, which is why sizes chosen from a
           scale look related and sizes chosen by eye do not.
         </p>
-        <div class="ladder" id="ladder"></div>
+        <div class="ladder" id="ladder" data-fx="fluid-scale"></div>
         <p class="callout">
           The <code>clamp()</code> column is the actual generated CSS. Copy any
           row. Because the middle term is a viewport-relative line, the size
@@ -194,7 +194,7 @@
           Below ~45 characters the eye returns too often; above ~75 it loses
           the line on the way back.
         </p>
-        <div class="measures" id="measures"></div>
+        <div class="measures" id="measures" data-fx="measure"></div>
       </section>
 
       <section>
@@ -211,7 +211,7 @@
             show baseline grid
           </button>
         </p>
-        <div class="rhythm" id="rhythm">
+        <div class="rhythm" id="rhythm" data-fx="vertical-rhythm">
           <h4>Rhythm is spacing you can predict</h4>
           <p>
             This paragraph's line-height is exactly one baseline unit. The
@@ -232,7 +232,7 @@
           Two properties that cost nothing and fix the two ugliest defaults:
           lopsided headings and orphaned last words.
         </p>
-        <div class="wrap-compare">
+        <div class="wrap-compare" data-fx="text-wrap">
           <div class="unset">
             <span class="measure__tag">default</span>
             <h4>A heading long enough to wrap onto several lines</h4>
@@ -266,7 +266,7 @@
           figures share one advance width so columns align; old-style figures
           have ascenders and descenders and sit better inside running prose.
         </p>
-        <table>
+        <table data-fx="numerals">
           <thead>
             <tr><th>Region</th><th>Proportional</th><th>Tabular (aligned)</th></tr>
           </thead>

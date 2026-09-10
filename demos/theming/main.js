@@ -52,7 +52,15 @@ document.getElementById('switcher').addEventListener('click', (e) => {
     apply(pref);
     return;
   }
-  document.startViewTransition(() => apply(pref));
+  // Starting a transition while one is still running SKIPS the old one, and
+  // its `finished` promise rejects with an AbortError. Nothing is actually
+  // wrong — the newer transition wins — but an unhandled rejection surfaces as
+  // a console error and trips error-reporting tools, so swallow that one case.
+  const transition = document.startViewTransition(() => apply(pref));
+  // BOTH promises reject when a transition is skipped, not just `finished` —
+  // catching one still leaves the other unhandled.
+  transition.ready.catch(() => {});
+  transition.finished.catch(() => {});
 });
 
 // ── Brand hue ────────────────────────────────────────────────────────────────
