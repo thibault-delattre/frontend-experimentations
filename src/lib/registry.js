@@ -123,6 +123,14 @@ export const DEMOS = [
       'Auto-growing fields, validation that waits for intent, accessible file drops and submit recovery without layout jumps.',
     tags: ['forms', 'field-sizing', 'validation'],
   },
+  {
+    slug: 'data-table',
+    title: 'Data Tables & Grids',
+    category: 'craft',
+    blurb:
+      'Semantic sorting, faceted filtering, sticky density controls and spreadsheet-style roving cell navigation.',
+    tags: ['table', 'aria-sort', 'data grid'],
+  },
 
   // --- Overlays & navigation ----------------------------------------------
   // The most-used patterns in any real product, and the ones most often
@@ -174,6 +182,14 @@ export const DEMOS = [
     blurb:
       'A tiny client-side router that intercepts every navigation source, coordinates async rendering, scroll and view transitions.',
     tags: ['navigation', 'router', 'baseline 2026'],
+  },
+  {
+    slug: 'tabs',
+    title: 'Tabs & Navigation State',
+    category: 'overlay',
+    blurb:
+      'Automatic and manual activation, shared sliding indicators, async panels and URL-addressable selection.',
+    tags: ['tabs', 'roving tabindex', 'history'],
   },
 
   // --- Modern CSS ---------------------------------------------------------
@@ -385,11 +401,22 @@ export const DEMOS = [
       'Lenis virtual scrolling wired into a depth-layered parallax scene, with velocity feeding a skew distortion.',
     tags: ['lenis', 'parallax', 'raf'],
   },
+  {
+    slug: 'drag-reorder',
+    title: 'Drag & Reorder',
+    category: 'motion',
+    blurb:
+      'Stable priority sorting, explicit accessible move controls, and a persistent cross-column Kanban board with undo.',
+    tags: ['drag and drop', 'kanban', 'accessibility'],
+  },
 ];
 
 /* Addition cohorts from repository history. Demos created in the same commit
    share a timestamp; registry order is their stable secondary order. */
 const RELEASE_COHORTS = [
+  { at: '2026-09-10T13:54:36+02:00', slugs: ['drag-reorder'] },
+  { at: '2026-09-10T13:52:45+02:00', slugs: ['data-table'] },
+  { at: '2026-09-10T13:51:07+02:00', slugs: ['tabs'] },
   { at: '2026-09-10T13:35:34+02:00', slugs: ['form-ux'] },
   { at: '2026-09-10T13:33:55+02:00', slugs: ['custom-highlights'] },
   { at: '2026-09-10T13:32:16+02:00', slugs: ['css-next'] },

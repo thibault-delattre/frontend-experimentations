@@ -1,6 +1,6 @@
 # frontend-experimentations
 
-A gallery of modern frontend technique — **44 self-contained pages**, one per
+A gallery of modern frontend technique — **47 self-contained pages**, one per
 topic, each written to be read and copy-pasted rather than installed.
 
 Every page lives in `demos/<slug>/` as one HTML file, one ES module and its own
@@ -30,7 +30,7 @@ This is what makes the repo reusable rather than just readable. The unit is a
 shimmer. Open any demo, hover an individual effect, and a small `✦ prompt`
 badge appears — click it to copy the brief that recreates *that exact thing*.
 
-**174 effects across all 44 demos**, each individually addressable.
+**183 effects across all 47 demos**, each individually addressable.
 
 Paste it into Claude, ChatGPT, Cursor or v0 and you get a working,
 self-contained implementation back. The prompts never reference this repo, this
@@ -84,6 +84,7 @@ between a page that looks designed and one that looks assembled.
 | [Loading & Empty States](demos/loading-states/) | Skeletons that match their content, the real timing thresholds, honest progress, optimistic UI with visible rollback, empty-state design. |
 | [Cursor & Pointer](demos/cursor-fx/) | Custom cursors, context awareness, magnetic pull, a canvas trail, spotlight masks — and the touch-device gate that makes it shippable. |
 | [Form UX & Validation](demos/form-ux/) | Content-sized controls, intent-aware validation, stable error messaging, and accessible drag-and-drop files. |
+| [Data Tables & Grids](demos/data-table/) | Semantic sorting, composable filters, sticky density controls, and spreadsheet-style keyboard navigation. |
 
 ### Overlays & navigation — native-first interaction patterns
 
@@ -95,6 +96,7 @@ between a page that looks designed and one that looks assembled.
 | [Menus & Disclosure](demos/menus/) | Popover action menus with roving focus, diagonal-safe mega-menu intent, and always-visible implementation guidance. |
 | [Interest Invokers & Hints](demos/interest-popovers/) | Declarative hover/focus/long-press previews, warm intent delays, hint popovers, and dual-purpose controls. |
 | [Navigation API Router](demos/navigation-api/) | Unified navigation interception, async rendering, history-aware transitions, focus, and scroll restoration. |
+| [Tabs & Navigation State](demos/tabs/) | Automatic and manual activation, a shared indicator, async panels, and URL-addressable state. |
 
 ### Modern CSS — no runtime at all
 
@@ -145,6 +147,7 @@ between a page that looks designed and one that looks assembled.
 | [GSAP ScrollTrigger](demos/gsap-scrolltrigger/) | Pinning, scrubbed timelines, snapping, horizontal scroll, counters, split text. |
 | [Springs & Layout](demos/spring-ui/) | Motion springs, drag with release velocity, shared-layout FLIP morphing, `hover()` / `press()` gestures. |
 | [Smooth Scroll & Parallax](demos/smooth-scroll/) | Lenis virtual scroll feeding parallax, velocity skew and a sticky depth stack from one rAF loop. |
+| [Drag & Reorder](demos/drag-reorder/) | Stable priority sorting, accessible move controls, and a persistent cross-column Kanban board with undo. |
 
 ---
 

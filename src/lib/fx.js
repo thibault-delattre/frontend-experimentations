@@ -3863,4 +3863,144 @@ list changes through a polite live region. Do not hide the input with
 display:none, do not trust accept as validation, do not read full file contents
 unless previews are requested, and revoke any object URLs when removed.`
   ),
+
+  'tabs/automatic-tabs': fx(
+    'Automatic tabs with a shared sliding indicator',
+    `Build a horizontal tabs widget for preloaded, instant panels. Use buttons
+with role=tab inside role=tablist, associated to role=tabpanel elements through
+aria-controls and aria-labelledby. Exactly one tab has aria-selected=true and
+tabindex=0; the rest have tabindex=-1. Left/Right wrap, Home/End jump, and focus
+automatically activates because panel switching has no latency.
+
+Use one absolutely positioned indicator behind every tab. Measure the selected
+button's offset and width into custom properties, remeasure with ResizeObserver
+and document.fonts.ready, and suppress its transition during first placement.
+Hide inactive panels with hidden. Do not animate individual backgrounds, and
+leave Up/Down untouched so horizontal tablists do not steal page scrolling.`
+  ),
+
+  'tabs/manual-async-tabs': fx(
+    'Manual tabs for asynchronous panels',
+    `Build tabs whose panels require asynchronous loading. Arrow keys move only
+roving focus; Enter or Space commits aria-selected and starts the request. This
+manual activation is required because fetching on every focus move makes
+keyboard exploration painfully slow.
+
+Show a stable pending state in the newly selected panel, use an incrementing
+request token or AbortController so stale responses cannot overwrite a newer
+selection, and retain panel dimensions while loading. Click activates directly.
+Keep focus on the tab after activation and make the panel itself tabindex=0
+when its first meaningful content is not otherwise focusable.`
+  ),
+
+  'tabs/url-tabs': fx(
+    'URL-addressable tab state',
+    `Add deep-linking to a tabset whose panels are meaningful enough to share.
+On selection write a stable section key to URLSearchParams and call
+history.replaceState when switching is merely local state, or pushState when
+each selection should be a Back-button step. On initial load and popstate, map
+the parameter back to a known tab and activate it without writing history again.
+
+Ignore unknown values and preserve unrelated query parameters. The tab widget's
+ARIA state remains the source of rendered selection; the URL is serialization,
+not a second independent state machine. Do not use hash links unless the page
+also wants native fragment scrolling and :target behavior.`
+  ),
+
+  'data-table/semantic-sort': fx(
+    'Semantic table sorting with aria-sort',
+    `Build a semantic HTML data table with sortable column headers. Put a real
+button inside each sortable <th scope=col>. Only the active header carries
+aria-sort=ascending or descending; all others are none. Clicking the same
+header toggles direction, while choosing another starts with its sensible
+default direction.
+
+Use Intl.Collator for locale-aware strings, numeric subtraction for numbers,
+and original row index as a stable tie-breaker. Re-render tbody but never
+recreate the header or focused sort button. Keep row headers as <th scope=row>.
+A reading-oriented table must not adopt role=grid or make every cell focusable.`
+  ),
+
+  'data-table/faceted-filter': fx(
+    'Composable search and facet filtering',
+    `Build table filtering from one immutable source array. A type=search query
+and single-select status chips compose with AND logic; changing either runs the
+same filter-sort-render pipeline. Set aria-pressed on facet buttons and announce
+the result count through a polite live region without announcing every row.
+
+When no row matches, render one table row whose cell spans every column and
+explains that both filters apply. Preserve header geometry and controls rather
+than collapsing the table. Search normalized text across only useful fields,
+keep sorting active after filtering, and debounce only if work is actually
+expensive—instant local arrays do not need artificial latency.`
+  ),
+
+  'data-table/roving-data-grid': fx(
+    'Spreadsheet-style roving data grid',
+    `Build an application-like data grid with role=grid, role=row wrappers,
+columnheader cells, and gridcell cells. Exactly one gridcell has tabindex=0.
+Arrow keys move within row/column bounds, Home/End move to row edges, and
+Control+Home/End move to the first or last cell. Update tabindex and real DOM
+focus together, scrolling the destination into view when needed.
+
+Explain the cost: screen readers enter application navigation mode, so every
+cell must be reachable and announced. Use this only for spreadsheet-like
+interaction; an ordinary report belongs in a semantic <table>. If a cell enters
+edit mode, Enter/F2 must suspend grid arrows and Escape must restore them.`
+  ),
+
+  'drag-reorder/priority-sort': fx(
+    'Stable priority list with placeholder and edge scrolling',
+    `Build a production sortable priority list with a dedicated handle and
+Pointer Events. On pointerdown capture the pointer on a stable list root, record
+the source's rectangle, insert a same-height placeholder, park the real source
+outside layout, and render a fixed pointer-events:none ghost at the measured
+width. Move only the placeholder while dragging; use elementFromPoint and each
+row's vertical midpoint to choose its position. This prevents the source row
+from oscillating under the pointer.
+
+When the pointer enters a 60px band at the top or bottom of the scroll viewport,
+run requestAnimationFrame edge scrolling with speed proportional to proximity,
+and repeat hit testing as content moves. On drop replace the placeholder with
+the real node. On pointercancel or Escape restore it at an origin marker. Apply
+touch-action:none only to handles and announce the committed position in a live
+region. Keep rows unanimated during hit-testing: animated transforms change
+visual midpoints and can make a stationary pointer oscillate between two slots.
+Provide separate non-drag controls for keyboard and assistive tech.`
+  ),
+
+  'drag-reorder/explicit-reorder': fx(
+    'Accessible explicit reorder controls',
+    `Build an ordered list whose rows expose visible Move up and Move down
+buttons instead of requiring a hidden keyboard drag mode. Disable Move up on
+the first row and Move down on the last. When activated, move the real DOM node
+one position, immediately recalculate boundary states and visible ordinal
+numbers, keep focus on the same button, and announce the item's new position
+through an aria-live region.
+
+Animate only visual continuity with FLIP: record row boxes, mutate DOM order,
+then animate old-minus-new translation back to zero. Respect reduced motion.
+Use native buttons with specific accessible names such as “Move Reports up” so
+the operation also works with keyboard, touch, switch access, and voice control.
+Do not use deprecated aria-grabbed or aria-dropeffect attributes.`
+  ),
+
+  'drag-reorder/kanban-board': fx(
+    'Persistent cross-column Kanban with undo',
+    `Build a three-column Kanban board for Backlog, In progress, and Done. Cards
+can be pointer-dragged within and across columns using a fixed ghost and stable
+same-size placeholder. Empty columns remain generous drop zones. Keep cards
+unanimated while hit-testing so visual and layout geometry cannot diverge.
+Commit real DOM order on drop, update column counts, and announce the destination
+and position. Give every card an explicit native
+select plus Move button as the keyboard, touch, voice, and assistive-technology
+alternative to dragging.
+
+Serialize ordered card IDs per status to localStorage after every committed
+move and restore only known IDs on load. Before each move, capture a complete
+board snapshot. Show a visible Undo action that restores the latest snapshot,
+persists it, updates controls and counts, and animates the reversal. Treat
+storage failure as non-fatal. Support pointercancel and Escape rollback, use
+touch-action:none only on drag handles, and avoid deprecated drag ARIA states.`
+  ),
 };
