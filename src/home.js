@@ -2,6 +2,18 @@ import { DEMOS, CATEGORIES, RELEASED_AT } from './lib/registry.js';
 
 const grid = document.getElementById('grid');
 const filters = document.getElementById('filters');
+// In development this module lives in /src/; after Vite builds it lives in
+// /assets/. Either location gives us the application root without depending on
+// the current document URL, which may be a dev-server fallback for a bad path.
+const moduleUrl = new URL(import.meta.url);
+const moduleFolder = moduleUrl.pathname.includes('/src/') ? '/src/' : '/assets/';
+const moduleFolderIndex = moduleUrl.pathname.indexOf(moduleFolder);
+const appRoot = new URL(moduleUrl);
+appRoot.pathname = moduleFolderIndex >= 0
+  ? moduleUrl.pathname.slice(0, moduleFolderIndex + 1)
+  : new URL('../', moduleUrl).pathname;
+appRoot.search = '';
+appRoot.hash = '';
 const KEYS = {
   favorites: 'frontend-experimentations:favorites:v1',
   viewed: 'frontend-experimentations:viewed:v1',
@@ -49,7 +61,7 @@ function cardMarkup(demo) {
         title="${favorite ? 'Remove from favorites' : 'Add to favorites'}">
         <span aria-hidden="true">${favorite ? '★' : '☆'}</span>
       </button>
-      <a class="card__link" href="./demos/${demo.slug}/index.html">
+      <a class="card__link" href="${new URL(`demos/${demo.slug}/index.html`, appRoot).href}">
         <span class="card__cat">${CATEGORIES[demo.category].label}</span>
         <h2 class="card__title">${demo.title}</h2>
         <p class="card__blurb">${demo.blurb}</p>

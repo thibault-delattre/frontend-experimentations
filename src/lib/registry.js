@@ -128,8 +128,8 @@ export const DEMOS = [
     title: 'Data Tables & Grids',
     category: 'craft',
     blurb:
-      'Semantic sorting, faceted filtering, sticky density controls and spreadsheet-style roving cell navigation.',
-    tags: ['table', 'aria-sort', 'data grid'],
+      'Semantic bulk tables, typed query builders, saved views, ten-thousand-row virtualization and reversible cell editing.',
+    tags: ['table', 'virtualization', 'data grid'],
   },
 
   // --- Overlays & navigation ----------------------------------------------

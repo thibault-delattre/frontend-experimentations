@@ -30,7 +30,7 @@ This is what makes the repo reusable rather than just readable. The unit is a
 shimmer. Open any demo, hover an individual effect, and a small `✦ prompt`
 badge appears — click it to copy the brief that recreates *that exact thing*.
 
-**183 effects across all 47 demos**, each individually addressable.
+**184 effects across all 47 demos**, each individually addressable.
 
 Paste it into Claude, ChatGPT, Cursor or v0 and you get a working,
 self-contained implementation back. The prompts never reference this repo, this
@@ -84,7 +84,7 @@ between a page that looks designed and one that looks assembled.
 | [Loading & Empty States](demos/loading-states/) | Skeletons that match their content, the real timing thresholds, honest progress, optimistic UI with visible rollback, empty-state design. |
 | [Cursor & Pointer](demos/cursor-fx/) | Custom cursors, context awareness, magnetic pull, a canvas trail, spotlight masks — and the touch-device gate that makes it shippable. |
 | [Form UX & Validation](demos/form-ux/) | Content-sized controls, intent-aware validation, stable error messaging, and accessible drag-and-drop files. |
-| [Data Tables & Grids](demos/data-table/) | Semantic sorting, composable filters, sticky density controls, and spreadsheet-style keyboard navigation. |
+| [Data Tables & Grids](demos/data-table/) | Semantic bulk tables, typed query builders with saved views, 10,000-row virtualization, and reversible cell editing. |
 
 ### Overlays & navigation — native-first interaction patterns
 

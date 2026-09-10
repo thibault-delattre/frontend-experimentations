@@ -3908,8 +3908,9 @@ also wants native fragment scrolling and :target behavior.`
   ),
 
   'data-table/semantic-sort': fx(
-    'Semantic table sorting with aria-sort',
-    `Build a semantic HTML data table with sortable column headers. Put a real
+    'Semantic sortable table with selection and bulk actions',
+    `Build a semantic HTML data table with sortable column headers, row
+selection, contextual bulk actions, and comfortable/compact density. Put a real
 button inside each sortable <th scope=col>. Only the active header carries
 aria-sort=ascending or descending; all others are none. Clicking the same
 header toggles direction, while choosing another starts with its sensible
@@ -3918,35 +3919,64 @@ default direction.
 Use Intl.Collator for locale-aware strings, numeric subtraction for numbers,
 and original row index as a stable tie-breaker. Re-render tbody but never
 recreate the header or focused sort button. Keep row headers as <th scope=row>.
-A reading-oriented table must not adopt role=grid or make every cell focusable.`
+A header checkbox selects all currently visible rows and exposes a bulk toolbar;
+keep its checked and indeterminate states synchronized after every mutation.
+Bulk actions operate on stable row IDs, not visual indexes. Density changes only
+CSS spacing. A reading-oriented table must not adopt role=grid or make every
+cell focusable.`
   ),
 
-  'data-table/faceted-filter': fx(
-    'Composable search and facet filtering',
-    `Build table filtering from one immutable source array. A type=search query
-and single-select status chips compose with AND logic; changing either runs the
-same filter-sort-render pipeline. Set aria-pressed on facet buttons and announce
-the result count through a polite live region without announcing every row.
+  'data-table/query-builder': fx(
+    'Typed query builder with persistent saved views',
+    `Build a table query builder where users add and remove condition rows and
+choose whether all or any rules must match. Each rule has a field, a typed
+operator, and a value. Enum fields render a select with is/is-not operators;
+numeric fields render a number input with less-than, at-most, at-least, and
+greater-than operators. When the field changes, reset the operator and value to
+valid defaults for its type. Evaluate every rule against one immutable dataset
+and update the table and polite result count immediately.
 
-When no row matches, render one table row whose cell spans every column and
-explains that both filters apply. Preserve header geometry and controls rather
-than collapsing the table. Search normalized text across only useful fields,
-keep sorting active after filtering, and debounce only if work is actually
-expensive—instant local arrays do not need artificial latency.`
+Include useful built-in presets and let users name and save the current mode and
+deep-cloned rule set to localStorage. Render saved names with textContent, assign
+stable IDs, support deletion, validate stored structures, and treat storage
+failure as non-fatal. An empty rule set means all records. A zero-result state
+must remain a colspan row inside the table so its geometry does not collapse.`
   ),
 
-  'data-table/roving-data-grid': fx(
-    'Spreadsheet-style roving data grid',
-    `Build an application-like data grid with role=grid, role=row wrappers,
+  'data-table/virtualized-table': fx(
+    'Windowed table for ten thousand rows',
+    `Build a fixed-row-height virtualized table for 10,000 locally available
+records without a framework. Give the viewport overflow:auto and a relative
+spacer whose height equals totalRows times rowHeight. On scroll, schedule one
+requestAnimationFrame, derive the visible start/end indexes, add five rows of
+overscan on each side, and mount only that slice as absolutely positioned rows
+translated to index times rowHeight. Reuse a DocumentFragment and replace the
+previous window in one mutation. Display the mounted DOM count and provide a
+clamped jump-to-row control.
+
+Expose role=table, row, columnheader and cell semantics, aria-rowcount for the
+complete dataset, and aria-rowindex for each mounted row including the header
+offset. Keep data operations separate from virtualization: if sorting or
+filtering changes the row model, recompute the window and return scroll to a
+valid position. Explain that server pagination is still required when the full
+dataset cannot reasonably be loaded into the browser.`
+  ),
+
+  'data-table/editable-grid': fx(
+    'Editable grid with reversible edit mode',
+    `Build an application-like editable grid with role=grid, role=row wrappers,
 columnheader cells, and gridcell cells. Exactly one gridcell has tabindex=0.
-Arrow keys move within row/column bounds, Home/End move to row edges, and
-Control+Home/End move to the first or last cell. Update tabindex and real DOM
-focus together, scrolling the destination into view when needed.
+Arrow keys move within row and column bounds, Home/End move across a row, and
+Control+Home/End jump to grid corners. Enter, F2, double-click, or printable
+typing replaces the focused cell content with the appropriate native input or
+select and transfers focus into it.
 
-Explain the cost: screen readers enter application navigation mode, so every
-cell must be reachable and announced. Use this only for spreadsheet-like
-interaction; an ordinary report belongs in a semantic <table>. If a cell enters
-edit mode, Enter/F2 must suspend grid arrows and Escape must restore them.`
+While editing, grid navigation is suspended so arrow keys belong to the form
+control. Enter commits, Escape restores the exact original value, and Tab or
+Shift+Tab commits then moves to the adjacent cell. Return focus to the cell,
+announce save or rollback, and preserve one roving tab stop. Use this composite
+pattern only when cell editing/navigation is a real product requirement; an
+ordinary readable report remains a semantic HTML table.`
   ),
 
   'drag-reorder/priority-sort': fx(

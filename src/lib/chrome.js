@@ -9,11 +9,17 @@ import { FX } from './fx.js';
 export function mountDemoBar() {
   const slug = location.pathname.replace(/\/(index\.html)?$/, '').split('/').pop();
   const demo = bySlug(slug) ?? { title: slug, tags: [] };
+  // Resolve from the first /demos/ boundary rather than walking up with ../.
+  // This also repairs navigation when a malformed URL already contains the
+  // demo path more than once.
+  const demosBoundary = location.pathname.indexOf('/demos/');
+  const appPath = demosBoundary >= 0 ? location.pathname.slice(0, demosBoundary + 1) : '/';
+  const appRoot = new URL(appPath, location.origin);
 
   const bar = document.createElement('header');
   bar.className = 'demo-bar';
   bar.innerHTML = `
-    <a class="demo-bar__back" href="../../index.html">← index</a>
+    <a class="demo-bar__back" href="${new URL('index.html', appRoot).href}">← index</a>
     <span class="demo-bar__title">${demo.title}</span>
     <span class="demo-bar__tags">${demo.tags
       .map((t) => `<span class="tag">${t}</span>`)
@@ -33,7 +39,7 @@ export function mountDemoBar() {
     const icon = document.createElement('link');
     icon.rel = 'icon';
     icon.type = 'image/svg+xml';
-    icon.href = '../../favicon.svg';
+    icon.href = new URL('favicon.svg', appRoot).href;
     document.head.append(icon);
   }
 
