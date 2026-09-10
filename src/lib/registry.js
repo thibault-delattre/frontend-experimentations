@@ -115,6 +115,14 @@ export const DEMOS = [
       'Custom cursors, magnetic buttons, trailing followers and blend-mode inversion — with the touch-device fallbacks.',
     tags: ['cursor', 'pointer', 'hover'],
   },
+  {
+    slug: 'form-ux',
+    title: 'Form UX & Validation',
+    category: 'craft',
+    blurb:
+      'Auto-growing fields, validation that waits for intent, accessible file drops and submit recovery without layout jumps.',
+    tags: ['forms', 'field-sizing', 'validation'],
+  },
 
   // --- Overlays & navigation ----------------------------------------------
   // The most-used patterns in any real product, and the ones most often
@@ -265,6 +273,22 @@ export const DEMOS = [
       'Rich native selects with base-select, selectedcontent, a top-layer picker and full fallback to the platform control.',
     tags: ['base-select', 'forms', 'selectedcontent'],
   },
+  {
+    slug: 'css-next',
+    title: 'CSS 2026 Primitives',
+    category: 'css',
+    blurb:
+      'Responsive shape() paths, typed attr(), automatic contrast colours and index-aware choreography from the 2026 platform.',
+    tags: ['shape()', 'attr()', 'contrast-color()'],
+  },
+  {
+    slug: 'custom-highlights',
+    title: 'Custom Highlight API',
+    category: 'css',
+    blurb:
+      'Search matches, persistent annotations and overlapping text ranges styled without wrapping or mutating document content.',
+    tags: ['Range', 'Highlight', 'CSS.highlights'],
+  },
 
   // --- Canvas 2D ----------------------------------------------------------
   {
@@ -362,5 +386,28 @@ export const DEMOS = [
     tags: ['lenis', 'parallax', 'raf'],
   },
 ];
+
+/* Addition cohorts from repository history. Demos created in the same commit
+   share a timestamp; registry order is their stable secondary order. */
+const RELEASE_COHORTS = [
+  { at: '2026-09-10T13:35:34+02:00', slugs: ['form-ux'] },
+  { at: '2026-09-10T13:33:55+02:00', slugs: ['custom-highlights'] },
+  { at: '2026-09-10T13:32:16+02:00', slugs: ['css-next'] },
+  { at: '2026-09-10T13:29:11+02:00', slugs: ['css-carousel', 'custom-select', 'interest-popovers', 'navigation-api'] },
+  { at: '2026-09-10T13:07:41+02:00', slugs: ['dialog', 'toast', 'command-palette', 'menus'] },
+  { at: '2026-09-10T10:55:29+02:00', slugs: ['cursor-fx', 'easing-lab', 'loading-states'] },
+  {
+    at: '2026-09-08T16:57:16+02:00',
+    slugs: ['borders-glow', 'color-harmony', 'elevation', 'image-treatment', 'layout-primitives', 'micro-interactions', 'noise-texture', 'theming', 'type-scale'],
+  },
+  {
+    at: '2026-09-08T15:54:04+02:00',
+    slugs: ['anchor-positioning', 'ascii-render', 'bento-grid', 'color-systems', 'css-3d', 'glass-refraction', 'gooey-morph', 'gpu-particles', 'gsap-scrolltrigger', 'image-displacement', 'kinetic-type', 'liquid-glass', 'particle-field', 'post-fx', 'scroll-driven', 'shader-lab', 'smooth-scroll', 'spring-ui', 'text-effects', 'tsl-material', 'view-transitions'],
+  },
+];
+
+export const RELEASED_AT = Object.fromEntries(
+  RELEASE_COHORTS.flatMap(({ at, slugs }) => slugs.map((slug) => [slug, at]))
+);
 
 export const bySlug = (slug) => DEMOS.find((d) => d.slug === slug);

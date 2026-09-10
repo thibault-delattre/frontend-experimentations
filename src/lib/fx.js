@@ -3717,4 +3717,150 @@ History direction is supporting information, never the only indication of
 location. Reduce all transition duration effectively to zero for users who
 prefer reduced motion.`
   ),
+
+  'css-next/responsive-shape': fx(
+    'Responsive paths with CSS shape()',
+    `Build a responsive decorative panel using clip-path:shape(). Use the CSS
+command syntax—start with 'from', then line and curve commands, and close the
+path. Define every control point in percentages so the path follows the box at
+any aspect ratio; demonstrate that calc() and custom properties may be used in
+coordinates, unlike the quoted SVG syntax consumed by path().
+
+Create a hover or focus morph by keeping both shapes' command structures
+compatible and transitioning clip-path. Content must remain readable when the
+entire declaration is unsupported: start from ordinary border-radius geometry,
+then apply shape() inside @supports. Keep the hit target stable and remove the
+morph transition under prefers-reduced-motion.`
+  ),
+
+  'css-next/typed-attr': fx(
+    'Data attributes consumed as typed CSS values',
+    `Build progress rows whose source values live only in data-progress HTML
+attributes. Parse each value with attr(data-progress type(<number>), 0), store
+it in --progress, and calculate width as calc(var(--progress) * 1%). Show a
+second element parsing an angle attribute with type(<angle>) or the deg unit.
+
+Include a fallback value in attr() for missing or invalid data. Keep semantic
+visible text or a real progress element because generated styling is not an
+accessible value. Explain that typed attr() avoids JavaScript copying data into
+inline styles but does not turn data-* into application state. Provide a static
+width fallback before the enhanced declaration.`
+  ),
+
+  'css-next/contrast-color': fx(
+    'Foreground chosen with contrast-color()',
+    `Build a live colour card controlled by an input type=color. JavaScript only
+writes one --surface token. CSS uses background:var(--surface) and
+color:contrast-color(var(--surface)) so the browser chooses black or white from
+the computed background.
+
+Put a conventional foreground declaration immediately before the enhanced one
+as fallback. Explicitly warn that contrast-color() only chooses between black
+and white; some mid-tone colours may still be poor for small WCAG text, and the
+function does not replace a real contrast audit. Use it for user-selected or
+unbounded colours, not as an excuse to abandon curated semantic token pairs.`
+  ),
+
+  'css-next/sibling-stagger': fx(
+    'Automatic stagger from sibling-index()',
+    `Build a row of items that enters sequentially without nth-child selectors,
+inline --i values or JavaScript-authored indexes. On each child set
+--i:sibling-index() and --count:sibling-count(), then calculate animation-delay
+as calc((var(--i) - 1) * 55ms). Use --count for one additional structural value,
+such as distributing hue or normalizing position.
+
+Add a replay button that only removes and restores a class; it must never count
+the elements. Demonstrate that inserting or reordering a sibling automatically
+recalculates choreography. Provide a no-delay fallback, cap total stagger for
+long collections, and zero both duration and delay under reduced motion.`
+  ),
+
+  'custom-highlights/search-ranges': fx(
+    'Search highlighting without wrapper elements',
+    `Build in-document search with the CSS Custom Highlight API. Walk only text
+nodes under the searchable article using TreeWalker and NodeFilter.SHOW_TEXT.
+For every case-insensitive match create a Range with offsets local to that text
+node. Put all ranges into one Highlight and register it as
+CSS.highlights.set('search-results', highlight); style it with
+::highlight(search-results).
+
+On each query change delete the prior named highlight before rebuilding it,
+handle overlapping-search policy explicitly, and announce the match count in a
+polite output. Do not replace innerHTML or wrap matches in mark elements—the
+point is preserving DOM identity, event listeners, selection and layout. Keep
+the unmodified article readable when CSS.highlights is absent.`
+  ),
+
+  'custom-highlights/persistent-annotations': fx(
+    'Persistent user annotations with Range and Highlight',
+    `Build a prose annotator where users select text and press one of three
+colour buttons. On activation verify selection.rangeCount, reject a collapsed
+selection or one outside the article, clone the Range, then collapse the native
+selection. Store annotation metadata separately from rendering.
+
+Group saved ranges by colour into named Highlight objects registered through
+CSS.highlights; style each group with ::highlight(). Render a separate notes
+list with quoted text and accessible remove buttons. Removing a note rebuilds
+only its colour group. Prevent pointerdown on palette buttons from clearing the
+selection before click. Never inject spans into the article and escape selected
+text before displaying it as HTML.`
+  ),
+
+  'custom-highlights/highlight-hit-test': fx(
+    'Hit-testing semantic text highlight layers',
+    `Enhance a Custom Highlight API annotator with hover inspection using
+CSS.highlights.highlightsFromPoint(clientX, clientY). For every returned result,
+read its ranges and convert each Range to text. Show those labels in a
+pointer-events:none tooltip following the pointer; hide it when no registered
+highlight is under the coordinate or the pointer leaves the article.
+
+Feature-detect highlightsFromPoint separately because it is newer and less
+widely supported than CSS.highlights itself. Multiple highlights may overlap,
+so never assume a single result. The tooltip is supplementary: annotations and
+their notes list must remain understandable without hover or hit-testing.`
+  ),
+
+  'form-ux/content-sized-fields': fx(
+    'Auto-growing fields with field-sizing',
+    `Build a message composer textarea and compact tag input using
+field-sizing:content. The textarea needs a useful min-height and capped
+max-height so it grows with content but becomes internally scrollable before it
+takes over the page. The short input needs min-width for its empty placeholder
+and max-width for long text.
+
+Do not mirror content into a hidden sizing element or run an input resize
+handler. Retain resize or ordinary platform sizing as the unsupported fallback.
+Keep labels programmatic, do not let the send button shrink, and test long
+unbroken strings, placeholder geometry, zoom and mobile keyboard input.`
+  ),
+
+  'form-ux/intent-validation': fx(
+    'Validation that waits for user intent',
+    `Build a form using native required, type=email and type=url constraints.
+Style :user-invalid and :user-valid rather than :invalid, because untouched
+required fields must not appear wrong on page load. Give every field a stable
+error slot linked by aria-describedby so messages do not shift the form.
+
+On blur, map ValidityState flags to specific recovery instructions and mirror
+failure with aria-invalid. During input, revalidate only a field already shown
+as invalid; do not shout at every keystroke. On submit validate all controls,
+focus the first invalid one and publish a summary in aria-live=polite. Native
+constraints remain the source of truth even when using novalidate to replace
+the browser tooltip presentation.`
+  ),
+
+  'form-ux/accessible-file-drop': fx(
+    'Accessible drag-and-drop file input',
+    `Build an image drop zone backed by a real input type=file with multiple and
+accept attributes. Its visible label must activate the native picker; drag and
+drop is only an enhancement. Prevent default on dragenter/dragover/drop, show a
+dragging state, and pass both dropped FileList and input.files through the same
+validation function.
+
+Allow only PNG, JPEG and WebP up to 5MB, deduplicate by name plus size, and list
+accepted files with human-readable size and a per-file remove button. Announce
+list changes through a polite live region. Do not hide the input with
+display:none, do not trust accept as validation, do not read full file contents
+unless previews are requested, and revoke any object URLs when removed.`
+  ),
 };

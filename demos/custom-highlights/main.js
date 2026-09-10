@@ -1,0 +1,19 @@
+import { mountDemoBar, warn } from '../../src/lib/chrome.js';
+mountDemoBar();
+const supported='highlights' in CSS&&'Highlight' in window;
+if(!supported)warn('The Custom Highlight API is unavailable here. The source text remains intact and selectable; search and persistent range styling require a supporting browser.');
+
+function textNodes(root){const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);const nodes=[];for(let node=walker.nextNode();node;node=walker.nextNode())nodes.push(node);return nodes}
+const query=document.getElementById('query'),searchText=document.getElementById('searchText'),count=document.getElementById('count');
+function search(){if(!supported)return;const needle=query.value.trim().toLocaleLowerCase(),ranges=[];CSS.highlights.delete('search-results');if(needle)for(const node of textNodes(searchText)){const hay=node.data.toLocaleLowerCase();let from=0;while(from<hay.length){const at=hay.indexOf(needle,from);if(at<0)break;const range=new Range();range.setStart(node,at);range.setEnd(node,at+needle.length);ranges.push(range);from=at+Math.max(needle.length,1)}}if(ranges.length)CSS.highlights.set('search-results',new Highlight(...ranges));count.textContent=`${ranges.length} match${ranges.length===1?'':'es'}`}
+query.addEventListener('input',search);search();
+
+const annotation=document.getElementById('annotationText'),noteList=document.getElementById('noteList'),noteStatus=document.getElementById('noteStatus');const notes=new Map(),palette=['yellow','pink','blue'];let serial=0;
+document.querySelectorAll('[data-colour]').forEach(button=>button.addEventListener('pointerdown',event=>event.preventDefault()));
+document.querySelectorAll('[data-colour]').forEach(button=>button.addEventListener('click',()=>addNote(button.dataset.colour)));
+function addNote(colour){if(!supported)return;const selection=getSelection();if(!selection.rangeCount||selection.isCollapsed){noteStatus.textContent='Select some text first';return}const range=selection.getRangeAt(0);if(!annotation.contains(range.commonAncestorContainer)){noteStatus.textContent='Select text inside the annotation passage';return}const id=`annotation-${++serial}`,copy=range.cloneRange();notes.set(id,{range:copy,colour,text:copy.toString()});selection.removeAllRanges();paintNotes();noteStatus.textContent=`Added ${colour} annotation`}
+function paintNotes(){noteList.innerHTML=[...notes].map(([id,n])=>`<div class="note-row"><span><strong>${n.colour}</strong> · “${escapeHtml(n.text.slice(0,64))}${n.text.length>64?'…':''}”</span><button data-remove="${id}" aria-label="Remove annotation">✕</button></div>`).join('');for(const colour of palette){const ranges=[...notes.values()].filter(x=>x.colour===colour).map(x=>x.range);ranges.length?CSS.highlights.set(`note-${colour}`,new Highlight(...ranges)):CSS.highlights.delete(`note-${colour}`)}}
+noteList.addEventListener('click',e=>{const button=e.target.closest('[data-remove]');if(!button)return;notes.delete(button.dataset.remove);paintNotes()});
+document.getElementById('clearNotes').addEventListener('click',()=>{for(const c of palette)CSS.highlights.delete(`note-${c}`);notes.clear();paintNotes();noteStatus.textContent='Annotations cleared'});
+const hit=document.getElementById('hit');annotation.addEventListener('pointermove',e=>{if(!CSS.highlights?.highlightsFromPoint)return;const found=CSS.highlights.highlightsFromPoint(e.clientX,e.clientY).flatMap(x=>x.ranges.map(r=>r.toString())).filter(Boolean);hit.textContent=found.length?found.join(' + '):'';hit.classList.toggle('show',!!found.length);hit.style.left=`${e.clientX}px`;hit.style.top=`${e.clientY}px`});annotation.addEventListener('pointerleave',()=>hit.classList.remove('show'));
+function escapeHtml(value){const span=document.createElement('span');span.textContent=value;return span.innerHTML}

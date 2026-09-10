@@ -1,6 +1,6 @@
 # frontend-experimentations
 
-A gallery of modern frontend technique — **41 self-contained pages**, one per
+A gallery of modern frontend technique — **44 self-contained pages**, one per
 topic, each written to be read and copy-pasted rather than installed.
 
 Every page lives in `demos/<slug>/` as one HTML file, one ES module and its own
@@ -17,6 +17,10 @@ Requires Node 20+. Vite builds every `demos/*/index.html` as its own entry, so
 adding a demo is: make the folder, add an entry to `src/lib/registry.js`, add a
 prompt to `src/lib/fx.js`.
 
+The gallery's **All** view is ordered newest-first from explicit release
+metadata. Favorites are stored locally and always sort ahead of non-favorites;
+the same local history shows when each demo and category was last viewed.
+
 ---
 
 ## ✦ A dictionary of effects, each with its own AI prompt
@@ -26,7 +30,7 @@ This is what makes the repo reusable rather than just readable. The unit is a
 shimmer. Open any demo, hover an individual effect, and a small `✦ prompt`
 badge appears — click it to copy the brief that recreates *that exact thing*.
 
-**164 effects across all 41 demos**, each individually addressable.
+**174 effects across all 44 demos**, each individually addressable.
 
 Paste it into Claude, ChatGPT, Cursor or v0 and you get a working,
 self-contained implementation back. The prompts never reference this repo, this
@@ -79,6 +83,7 @@ between a page that looks designed and one that looks assembled.
 | [Easing & Timing](demos/easing-lab/) | Every curve plotted *and* played from the same function, a bezier editor, springs with `linear()` output, and the interruption problem. |
 | [Loading & Empty States](demos/loading-states/) | Skeletons that match their content, the real timing thresholds, honest progress, optimistic UI with visible rollback, empty-state design. |
 | [Cursor & Pointer](demos/cursor-fx/) | Custom cursors, context awareness, magnetic pull, a canvas trail, spotlight masks — and the touch-device gate that makes it shippable. |
+| [Form UX & Validation](demos/form-ux/) | Content-sized controls, intent-aware validation, stable error messaging, and accessible drag-and-drop files. |
 
 ### Overlays & navigation — native-first interaction patterns
 
@@ -107,6 +112,8 @@ between a page that looks designed and one that looks assembled.
 | [Text Effects Lab](demos/text-effects/) | Nine headline treatments: shine, pointer spotlight mask, glitch, blur-in, neon, scramble, `@property` gradients. |
 | [CSS-Native Carousel](demos/css-carousel/) | Generated scroll buttons and markers, current-target styling, scroll snap, and snapped-state container queries. |
 | [Customizable Select](demos/custom-select/) | `appearance: base-select`, rich options, `selectedcontent`, top-layer picker styling, and native fallback. |
+| [CSS 2026 Primitives](demos/css-next/) | Responsive `shape()` paths, typed `attr()`, `contrast-color()`, and automatic sibling-aware choreography. |
+| [Custom Highlight API](demos/custom-highlights/) | Search results, persistent annotations, overlapping ranges, and highlight hit-testing without DOM wrappers. |
 
 ### Canvas 2D
 
