@@ -214,7 +214,7 @@
           difference is that the right-hand card stacks six shadows whose blur
           doubles and whose opacity halves at each step.
         </p>
-        <div class="surface">
+        <div class="surface" data-fx="layered-shadow">
           <div class="pair">
             <div>
               <div class="card flat">flat</div>
@@ -242,7 +242,7 @@
           internally consistent. Ship them as custom properties and never write
           an ad-hoc shadow again.
         </p>
-        <div class="surface">
+        <div class="surface" data-fx="elevation-ramp">
           <div class="ramp" id="ramp"></div>
         </div>
         <p class="callout">
@@ -260,10 +260,14 @@
           <strong>Drag the light.</strong> Inconsistent shadow directions across
           a UI are the clearest sign the shadows were tuned one at a time.
         </p>
-        <div class="surface" style="padding: 1.5rem">
+        <div class="surface" style="padding: 1.5rem" data-fx="light-source">
           <div class="scene" id="scene">
-            <div class="light" id="light" tabindex="0" role="slider"
-                 aria-label="Light position" aria-valuetext="centre top"></div>
+            <!-- Not role="slider": that role models a ONE-dimensional value and
+                 requires aria-valuenow, which is meaningless for a 2D position.
+                 A labelled, focusable control whose label reports the position
+                 is the honest mapping. -->
+            <div class="light" id="light" tabindex="0" role="button"
+                 aria-label="Light position: centre top. Use arrow keys to move."></div>
             <div class="card">A</div>
             <div class="card">B</div>
             <div class="card">C</div>
@@ -281,7 +285,7 @@
           dirt. A shadow carrying the surface's own hue at low lightness reads
           as light.
         </p>
-        <div class="surface tinted-bg">
+        <div class="surface tinted-bg" data-fx="tinted-shadow">
           <div class="pair">
             <div>
               <div class="card shadow-black">black</div>
@@ -302,7 +306,7 @@
           Without it a card appears to hover a centimetre off the page; with it
           the same card is resting on it. One extra line.
         </p>
-        <div class="surface">
+        <div class="surface" data-fx="contact-shadow">
           <div class="pair">
             <div>
               <div class="card no-contact">floating</div>
@@ -322,7 +326,7 @@
           The same principle inverted. A pressed control gains an inner shadow
           and loses its outer one; a well or track is permanently inset.
         </p>
-        <div class="surface">
+        <div class="surface" data-fx="inset-pressed">
           <div class="inset-demo">
             <button type="button">Press and hold me</button>
             <button type="button">And me</button>
@@ -339,7 +343,7 @@
           actually sells it is a one-pixel <strong>rim highlight</strong> along
           the top edge — a lit edge, not a cast shadow.
         </p>
-        <div class="dark-demo">
+        <div class="dark-demo" data-fx="dark-elevation">
           <div class="dark-card dark-shadow-only"><b>Shadow only</b>Barely reads. This is what happens when a light-mode shadow scale is reused unchanged.</div>
           <div class="dark-card dark-fill-only"><b>Lighter fill</b>Better — but flat, and the edges are ambiguous.</div>
           <div class="dark-card dark-correct"><b>Fill + rim + shadow</b>The inset top highlight is doing most of the work here.</div>
@@ -359,7 +363,7 @@
           visual result is identical and it runs on the GPU.
           <strong>Hover the card.</strong>
         </p>
-        <div class="surface">
+        <div class="surface" data-fx="animate-elevation">
           <div class="card layered perf">hover me</div>
         </div>
         <pre><code>.card::after {

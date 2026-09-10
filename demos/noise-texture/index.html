@@ -186,7 +186,7 @@
         </p>
         <div class="pair">
           <div class="cell"><div class="banding"></div><span class="cell__tag">no grain — banded</span></div>
-          <div class="cell grain"><div class="banding"></div><span class="cell__tag">+ turbulence</span></div>
+          <div class="cell grain" data-fx="film-grain"><div class="banding"></div><span class="cell__tag">+ turbulence</span></div>
         </div>
         <div class="controls">
           <label>grain opacity <input type="range" id="g-op" min="0" max="100" value="42" /><output id="g-op-out"></output></label>
@@ -218,7 +218,7 @@
           frame.
         </p>
         <div class="pair">
-          <div class="cell mesh"><div class="mesh__layer"></div><span class="cell__tag">blur 48px, 22s drift</span></div>
+          <div class="cell mesh" data-fx="mesh-gradient"><div class="mesh__layer"></div><span class="cell__tag">blur 48px, 22s drift</span></div>
           <div class="cell mesh grain"><div class="mesh__layer"></div><span class="cell__tag">+ grain — no banding</span></div>
         </div>
       </section>
@@ -231,8 +231,8 @@
           and unlike a bitmap it scales to any size.
         </p>
         <div class="pair">
-          <div class="cell dither"><span class="cell__tag">bayer 4×4 · hard-light</span></div>
-          <div class="cell halftone"><span class="cell__tag">halftone · 15° · color-burn</span></div>
+          <div class="cell dither" data-fx="bayer-dither"><span class="cell__tag">bayer 4×4 · hard-light</span></div>
+          <div class="cell halftone" data-fx="halftone"><span class="cell__tag">halftone · 15° · color-burn</span></div>
         </div>
         <p class="callout">
           The halftone screen is rotated 15°. Real print screens are set off-axis
@@ -244,7 +244,7 @@
       <section>
         <h2>4 · Paper, and CRT <span>material and artefact</span></h2>
         <div class="pair">
-          <div class="cell paper">
+          <div class="cell paper" data-fx="paper-fibre">
             <div class="paper__text">
               High-frequency turbulence, desaturated and multiplied over a warm
               off-white. The fibre is doing very little individually — it is the
@@ -252,7 +252,7 @@
             </div>
             <span class="cell__tag">fibre · multiply</span>
           </div>
-          <div class="cell crt">
+          <div class="cell crt" data-fx="crt-scanlines">
             <div class="crt__content">READY.</div>
             <span class="cell__tag">scanlines + vignette</span>
           </div>

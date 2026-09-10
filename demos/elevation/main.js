@@ -74,9 +74,11 @@ function place(nx, ny) {
   light.style.left = `calc(${(x * 100).toFixed(2)}% - 15px)`;
   light.style.top = `calc(${(y * 100).toFixed(2)}% - 15px)`;
 
+  // The label carries the position, so a screen-reader user gets the same
+  // feedback a sighted user gets from watching the shadows move.
   const h = y < 0.34 ? 'top' : y > 0.66 ? 'bottom' : 'middle';
   const v = x < 0.34 ? 'left' : x > 0.66 ? 'right' : 'centre';
-  light.setAttribute('aria-valuetext', `${v} ${h}`);
+  light.setAttribute('aria-label', `Light position: ${v} ${h}. Use arrow keys to move.`);
 }
 
 place(0.5, 0.08);

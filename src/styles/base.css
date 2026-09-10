@@ -132,23 +132,96 @@ canvas {
   flex-wrap: wrap;
 }
 
-.demo-bar__prompt {
+.demo-bar__hint {
   flex-shrink: 0;
-  font: inherit;
-  font-size: 0.78rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
+  color: var(--accent-2);
+  white-space: nowrap;
+}
+@media (max-width: 720px) {
+  .demo-bar__hint {
+    display: none;
+  }
+}
+
+/* --- Per-effect prompt buttons -------------------------------------------- */
+
+/* The host gets no visual treatment of its own — an outline or background here
+   would alter the very effect being demonstrated. Only the button appears. */
+.fx-host {
+  position: relative;
+}
+
+/* Wrapper for SMALL controls (a button, a checkbox). Many of them set
+   overflow: hidden for their own effect, which would clip a button placed
+   inside them — so the wrapper sits outside the control and the badge hangs
+   off its corner instead. */
+.fx-item {
+  position: relative;
+  display: inline-flex;
+}
+/* Float the badge fully CLEAR of a small control rather than on top of it —
+   at -10px it lands on the control's own label and hides the thing being
+   demonstrated. */
+.fx-item > .fx-btn {
+  top: auto;
+  right: 0;
+  bottom: calc(100% + 5px);
+}
+
+.fx-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 30;
+
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.03em;
+  line-height: 1;
   color: var(--bg-0);
-  background: linear-gradient(100deg, var(--accent), var(--accent-2));
+  background: var(--accent-2);
   border: 0;
   border-radius: 100px;
-  padding: 0.3rem 0.85rem;
+  padding: 0.3rem 0.55rem;
   cursor: pointer;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  transition: filter 0.2s, transform 0.2s var(--ease-out);
+
+  opacity: 0;
+  translate: 0 -3px;
+  transition: opacity 0.18s, translate 0.18s var(--ease-out), background 0.18s;
+  /* The host is frequently interactive itself; the button must not swallow
+     pointer events until it is actually visible. */
+  pointer-events: none;
 }
-.demo-bar__prompt:hover {
-  filter: brightness(1.12);
-  transform: translateY(-1px);
+
+.fx-host:hover > .fx-btn,
+.fx-host:focus-within > .fx-btn,
+.fx-btn:focus-visible {
+  opacity: 1;
+  translate: 0 0;
+  pointer-events: auto;
+}
+
+.fx-btn:hover {
+  background: var(--fg);
+}
+
+/* Touch devices have no hover, so the affordance would never appear. */
+@media (hover: none) {
+  .fx-btn {
+    opacity: 0.85;
+    translate: 0 0;
+    pointer-events: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fx-btn {
+    transition: opacity 0.18s;
+    translate: 0 0;
+  }
 }
 
 /* --- Prompt dialog -------------------------------------------------------- */

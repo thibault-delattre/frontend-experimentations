@@ -159,7 +159,7 @@
     </div>
 
     <main>
-      <section>
+      <section data-fx="skeleton-card">
         <h2>1 · Three states, one geometry <span>toggle them</span></h2>
         <p class="lead">
           The same component rendered as skeleton, loaded and error. Flip
@@ -173,7 +173,7 @@
           <button type="button" data-state="error" aria-pressed="false">Error</button>
           <button type="button" data-state="cycle" aria-pressed="false">Realistic load →</button>
         </div>
-        <div class="grid3" id="cards"></div>
+        <div class="grid3" id="cards" data-fx="shimmer"></div>
         <p class="callout">
           A skeleton whose bars are a different height from the text, or whose
           card is shorter than the loaded one, produces a jolt at exactly the
@@ -189,7 +189,7 @@
           established perceptual bands — click each to simulate a response of
           that duration.
         </p>
-        <div class="threshold" id="thresholds"></div>
+        <div class="threshold" id="thresholds" data-fx="load-thresholds"></div>
         <p class="callout">
           The two rules people miss: a <strong>delay before showing</strong>
           (do not flash a spinner for a 60ms request) and a
@@ -212,7 +212,7 @@ if (spinner) {
 }</code></pre>
       </section>
 
-      <section>
+      <section data-fx="progress-determinate">
         <h2>3 · Progress that does not lie <span>determinate vs. indeterminate</span></h2>
         <p class="lead">
           If you know the total, show it. If you do not, an indeterminate bar is
@@ -244,7 +244,7 @@ if (spinner) {
           away believing something happened that did not.
         </p>
         <div class="toolbar">
-          <button class="like" id="like" type="button" aria-pressed="false">
+          <button class="like fx-item" id="like" type="button" aria-pressed="false" data-fx="optimistic-like">
             <span>♥</span> <span class="like__count" id="likeCount">128</span>
           </button>
           <label style="font-size: 0.8rem; color: var(--fg-dim); display: flex; align-items: center; gap: 0.5rem">
@@ -262,7 +262,7 @@ if (spinner) {
           still in flight.
         </p>
         <div class="toolbar"><button type="button" id="streamBtn">Stream results</button></div>
-        <ul class="stream" id="stream"></ul>
+        <ul class="stream" id="stream" data-fx="streaming-list"></ul>
       </section>
 
       <section>
@@ -272,7 +272,7 @@ if (spinner) {
           the words "No data". It should say what would be here, why it is not,
           and what to do about it.
         </p>
-        <div class="empties">
+        <div class="empties" data-fx="empty-state">
           <div class="empty empty--bad">No data</div>
           <div class="empty">
             <svg width="52" height="52" viewBox="0 0 52 52" fill="none" aria-hidden="true">

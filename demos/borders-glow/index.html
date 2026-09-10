@@ -198,7 +198,7 @@
           card can never be see-through, because the top layer must be opaque.
         </p>
         <div class="row">
-          <div class="demo-card b-clip"><b>padding-box + border-box</b><span>Opaque fill required.</span></div>
+          <div class="demo-card b-clip" data-fx="gradient-border-clip"><b>padding-box + border-box</b><span>Opaque fill required.</span></div>
         </div>
         <pre><code>border: 2px solid transparent;
 background:
@@ -215,7 +215,7 @@ background:
           <code>exclude</code>, which subtracts the second from the first.
         </p>
         <div class="row">
-          <div class="demo-card b-mask"><b>Transparent inside</b><span>The page shows through the card.</span></div>
+          <div class="demo-card b-mask" data-fx="gradient-border-mask"><b>Transparent inside</b><span>The page shows through the card.</span></div>
         </div>
         <pre><code>&::before {
   inset: 0; border-radius: inherit;
@@ -242,7 +242,7 @@ background:
           from one value to the next with no interpolation.
         </p>
         <div class="row">
-          <div class="demo-card b-rotate"><b>Registered &lt;angle&gt;</b><span>Now it can be tweened.</span></div>
+          <div class="demo-card b-rotate" data-fx="conic-rotate"><b>Registered &lt;angle&gt;</b><span>Now it can be tweened.</span></div>
         </div>
         <pre><code>@property --angle {
   syntax: '&lt;angle&gt;';
@@ -260,7 +260,7 @@ background:
           written by a single delegated listener on the container — not one
           per card.
         </p>
-        <div class="spot-grid" id="spotGrid"></div>
+        <div class="spot-grid" id="spotGrid" data-fx="spotlight-grid"></div>
       </section>
 
       <section>
@@ -273,7 +273,7 @@ background:
         <div class="rim-row">
           <div class="demo-card rim-none"><b>Border only</b><span>Flat. Ambiguous edges.</span></div>
           <div class="demo-card rim-yes"><b>+ inset top highlight</b><span>Suddenly it has a top surface.</span></div>
-          <div class="demo-card rim-full"><b>+ gradient + bottom shade</b><span>Fully modelled.</span></div>
+          <div class="demo-card rim-full" data-fx="rim-highlight"><b>+ gradient + bottom shade</b><span>Fully modelled.</span></div>
         </div>
         <pre><code>box-shadow:
   inset 0  1px 0 oklch(100% 0 0 / 0.11),   /* lit top edge   */
@@ -290,7 +290,7 @@ background:
           <code>stroke-dashoffset</code> handles both correctly.
         </p>
         <div class="row">
-          <div class="dash-wrap">
+          <div class="dash-wrap" data-fx="marching-dashes">
             <div class="demo-card" style="border: 1px solid transparent"><b>Drop zone</b><span>Dashes march around the radius.</span></div>
             <svg aria-hidden="true"><rect x="1" y="1" width="calc(100% - 2px)" height="calc(100% - 2px)" /></svg>
           </div>
@@ -304,13 +304,13 @@ background:
           that blurs the text too. Put a blurred, scaled copy behind it.
         </p>
         <div class="row">
-          <div class="demo-card glow-card"><b>Hover for glow</b><span>Text stays perfectly sharp.</span></div>
+          <div class="demo-card glow-card" data-fx="glow-behind"><b>Hover for glow</b><span>Text stays perfectly sharp.</span></div>
         </div>
         <p class="lead" style="margin-top: 2rem">
           And a focus ring must be an <code>outline</code>, never a
           <code>border</code>. Tab between these two:
         </p>
-        <div class="focus-demo">
+        <div class="focus-demo" data-fx="focus-ring">
           <button class="focus-bad" type="button">Border ring (jumps)</button>
           <button class="focus-good" type="button">Outline ring (stable)</button>
         </div>

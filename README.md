@@ -19,29 +19,40 @@ prompt to `src/lib/prompts.js`.
 
 ---
 
-## ✦ Every demo ships with the prompt that rebuilds it
+## ✦ A dictionary of effects, each with its own AI prompt
 
-This is the part that makes the repo reusable rather than just readable. Each
-page has a **prompt** button in its top bar that opens the full AI brief for
-that technique — paste it into Claude, ChatGPT, Cursor or v0 and get the demo
-back from scratch. On the home page, hover any card to copy its prompt
-directly.
+This is what makes the repo reusable rather than just readable. The unit is a
+**single effect**, not a page: one magnetic button, one gooey filter, one
+shimmer. Open any demo, hover an individual effect, and a small `✦ prompt`
+badge appears — click it to copy the brief that recreates *that exact thing*.
 
-The prompts live in [`src/lib/prompts.js`](src/lib/prompts.js) and are written
-to be *self-contained*: none of them reference this repo, so they survive being
-pasted into a cold chat. They all follow the same four-part shape, which is the
-genuinely reusable lesson:
+Paste it into Claude, ChatGPT, Cursor or v0 and you get a working,
+self-contained implementation back. The prompts never reference this repo, this
+file, or a neighbouring effect, so they survive being pasted into a cold chat.
 
-| Section | Job |
-| --- | --- |
-| **BUILD** | One sentence naming the artefact and the stack. |
-| **TECHNIQUE** | The specific mechanism, *named*. This is what stops a model reaching for jQuery or a component library. |
-| **REQUIREMENTS** | A numbered list, each item independently checkable. |
-| **CONSTRAINTS** | What *not* to do — usually the highest-signal section. |
+**How it works.** Any element carrying `data-fx="<id>"` is resolved as
+`<demo-slug>/<id>` against [`src/lib/fx.js`](src/lib/fx.js), and gets a badge
+automatically. Adding a new effect to the dictionary is two steps:
 
-Every number, property name and failure mode in them is load-bearing. Vague
-prompts produce generic output; "use `mask-composite: exclude`" produces the
-right answer first time.
+```html
+<div class="my-effect" data-fx="my-effect">…</div>
+```
+
+```js
+// src/lib/fx.js
+'my-demo/my-effect': fx('Human-readable title', `Build … The mechanism: …`),
+```
+
+A `data-fx` with no matching entry logs a console warning rather than silently
+rendering nothing — an authoring mistake should be loud.
+
+**How the prompts are written.** Each one names the *mechanism* explicitly,
+because that is what decides the quality of the output. "Make a button that
+reacts to the cursor" produces a hover state; "translate the element by a
+fraction of the cursor's offset once inside a radius, and lerp it back on exit"
+produces the actual effect. Every number, property name and failure mode in
+them is load-bearing, and a shared constraints block keeps the output vanilla,
+accessible and compositor-friendly.
 
 ---
 
@@ -136,10 +147,11 @@ There is deliberately very little:
 
 - `src/styles/base.css` — design tokens, reset and the prompt dialog.
 - `src/lib/registry.js` — the demo list, used by the home page and the top bar.
-- `src/lib/prompts.js` — one AI brief per demo.
-- `src/lib/chrome.js` — the demo top bar and prompt dialog, plus four helpers
-  most canvas demos want: `autoResize`, `raf` (delta-clamped), `pointer`,
-  `reducedMotion`.
+- `src/lib/fx.js` — the effect dictionary: one AI prompt per individual effect,
+  keyed `<demo-slug>/<data-fx id>`.
+- `src/lib/chrome.js` — the demo top bar, the per-effect prompt badges and their
+  dialog, plus four helpers most canvas demos want: `autoResize`, `raf`
+  (delta-clamped), `pointer`, `reducedMotion`.
 
 ## Browser support
 
