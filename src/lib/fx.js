@@ -3532,17 +3532,189 @@ disclosure layout. Keep the forgiveness delay bounded—this solves accidental
 closure, not sluggish navigation.`
   ),
 
-  'menus/details-accordion': fx(
-    'Native exclusive accordion with intrinsic animation',
-    `Build an FAQ accordion from native <details>/<summary>. Give related details
-the same name attribute so the browser enforces exclusive open state without
-JavaScript. Hide the platform marker and draw a plus with summary::after that
-rotates when open, while preserving summary's native keyboard behavior.
+  /* ═══ 2026 platform primitives ═══════════════════════════════════════ */
 
-To animate unknown-height content, put a wrapper inside the details content and
-animate an outer grid from grid-template-rows: 0fr to 1fr; the immediate inner
-child needs overflow:hidden. Explain that removing name permits multiple open
-panels. Do not replace summary with a div, add redundant button roles, or put
-interactive controls inside summary.`
+  'css-carousel/scroll-buttons': fx(
+    'CSS-generated carousel controls',
+    `Build a semantic horizontal carousel from a list and CSS only. The list is
+an overflow-x:auto scroll container with scroll-snap-type:inline mandatory;
+each item uses scroll-snap-align:center. Generate previous and next controls
+with ::scroll-button(inline-start) and ::scroll-button(inline-end), providing
+both visible content and an accessible name through the content property's
+string/alt syntax.
+
+Position the generated buttons over the scroller with CSS anchor positioning.
+Style their :disabled state—the browser owns boundary detection and disables
+them at the first and last page. Use logical directions, not left/right, so the
+control follows writing mode. The fallback must remain an ordinary scrollable
+snap list; never hide overflow or require generated buttons to reach content.`
+  ),
+
+  'css-carousel/scroll-markers': fx(
+    'Native carousel markers with current-target state',
+    `Add direct navigation markers to a CSS scroll-snap carousel without
+JavaScript. Set scroll-marker-group:after on the scroller, create one marker per
+item with item::scroll-marker, and supply an accessible name using content with
+alt text sourced from a data-label attribute. Lay out ::scroll-marker-group as
+a centered row.
+
+Style the current marker using ::scroll-marker:target-current. Animate its
+width and color but keep all markers large enough to perceive and focus. Explain
+that the browser updates current state from the eventual scroll target and owns
+the focus-group keyboard behavior. Do not duplicate state in aria-selected or
+an IntersectionObserver. Keep native scrolling as the unsupported fallback.`
+  ),
+
+  'css-carousel/snapped-state': fx(
+    'Card styling driven by snapped scroll state',
+    `Build carousel cards whose visual emphasis follows which card is snapped,
+using scroll-state container queries instead of a scroll listener. Each item
+declares container-type:scroll-state. Give the resting card slightly reduced
+opacity, scale and saturation, then restore them inside:
+  @container scroll-state(snapped: inline) { .card { ... } }
+
+Pair this with scroll-snap-align and a modest transition. The state must remain
+purely decorative—content and controls cannot disappear simply because support
+is missing. Avoid aggressive scaling that changes the perceived snap geometry,
+and remove the transition under prefers-reduced-motion.`
+  ),
+
+  'custom-select/rich-options': fx(
+    'Rich options in a native customizable select',
+    `Build a native <select> whose options contain a decorative swatch, primary
+label and short supporting line. Opt both the control and ::picker(select) into
+appearance:base-select. Style option:hover, option:focus, option:checked and
+option::checkmark while preserving the platform's keyboard selection and form
+submission.
+
+Every option needs an explicit value so rich text cannot change submitted data.
+Decorative icons use aria-hidden. Do not put buttons, links or other interactive
+content inside options. Include @supports or capability messaging and ensure
+unsupported browsers still receive a labeled, functional native select with
+plain option text—the enhancement may disappear, but selection cannot.`
+  ),
+
+  'custom-select/selected-content': fx(
+    'Separate closed and open select presentations',
+    `Build a customizable select whose first child is an inert <button> holding
+<selectedcontent>. Explain and demonstrate that selectedcontent receives a
+clone of the selected option, which can be styled differently from the option
+inside the open picker. Hide secondary descriptions and shortcut labels only
+inside selectedcontent so the closed control stays compact while picker rows
+retain decision-making context.
+
+Do not add event handlers or focusable children to the inner button; native
+select behavior owns it. Use explicit option values. Note the important data
+model caveat: later DOM mutations to the original selected option are not
+automatically reflected until selection changes, because the browser cloned
+the subtree rather than moving it.`
+  ),
+
+  'custom-select/adaptive-picker': fx(
+    'Top-layer select picker with intrinsic-width reveal',
+    `Build an icon-first native select picker that expands to reveal option text
+when hovered or when an option receives :focus-visible. Use
+appearance:base-select, target the top-layer surface with ::picker(select), and
+animate width toward calc-size(auto, size + .5rem) where supported. The focus
+selector belongs on the select via :has(option:focus-visible), so keyboard and
+pointer users get the same reveal.
+
+Animate picker entry/exit with opacity and translate plus display/overlay
+allow-discrete, and use @starting-style for the opening frame. Rotate
+::picker-icon when select:open. Provide a stable min-width fallback when
+calc-size or customizable selects are unavailable, and make all motion instant
+under prefers-reduced-motion.`
+  ),
+
+  'interest-popovers/profile-preview': fx(
+    'Declarative link preview from user interest',
+    `Build a link that reveals a contextual preview when a user shows interest
+through hover, keyboard focus or supported touch intent. Give the link
+interestfor="preview-id" and the target id="preview-id" popover="hint". Add
+interest-delay-start around 450ms so moving through dense prose does not erupt
+with previews, and a shorter end delay so the pointer can cross into the card.
+
+Anchor the hint near its invoker with position-area, animate its discrete
+top-layer entry/exit, and keep the link's href fully functional—activation must
+still navigate. Preview content supplements rather than duplicates the target
+page. Feature-detect interestForElement and provide hover+focus JS fallback,
+while stating that fallback cannot faithfully reproduce native long-press.`
+  ),
+
+  'interest-popovers/warm-intent': fx(
+    'Warm intent delays across related previews',
+    `Build a dense row of interest invokers where the first preview waits long
+enough to prove intent, but moving among related items feels immediate. Apply a
+default interest-delay-start of about 450ms. When the container :has() any
+child matching :interest-source, reduce sibling start delays to about 80ms.
+Retain a short interest-delay-end so users can move into interactive preview
+content without crossing a disappearing gap.
+
+Each target is popover="hint", so opening one hint replaces the prior hint but
+does not dismiss an unrelated auto popover. Focus must trigger the same previews
+as pointer dwell. Avoid a zero initial delay: it creates noisy, involuntary UI
+and makes users steer around triggers.`
+  ),
+
+  'interest-popovers/dual-popover': fx(
+    'One control with a hint and an action popover',
+    `Build one button with two declarative relationships: interestfor points to
+a small popover="hint" tooltip, while commandfor plus
+command="toggle-popover" controls a richer popover="auto" panel on activation.
+Showing interest must not consume the click, and opening the auto panel must not
+close the hint merely because it appeared—the hint popover type exists for this
+layering case.
+
+Position the hint above and panel below the same invoker using anchor positioning.
+Keep the hint nonessential and the activated panel fully operable by keyboard.
+Feature-detect commandForElement and add only a click/togglePopover fallback;
+do not rebuild light-dismiss, Escape or top-layer stacking in JavaScript.`
+  ),
+
+  'navigation-api/unified-navigation': fx(
+    'Client-side routing from one navigation event',
+    `Build a tiny client-side router with the Navigation API. Listen once to
+window.navigation's navigate event. Exit early when event.canIntercept is false,
+the destination is cross-origin, or its pathname is outside the app. For an
+eligible URL call event.intercept({ handler }), parse route state from
+event.destination.url and render it.
+
+This handler must cover links, history traversal and navigation.navigate calls
+without a document-level click trap. Keep real href values so open-in-new-tab,
+copy-link and no-JavaScript navigation remain meaningful. Include a small
+History API fallback with click and popstate handling, explicitly noting that it
+does not cover every navigation source the native API sees.`
+  ),
+
+  'navigation-api/async-transition': fx(
+    'Async route rendering coordinated with View Transitions',
+    `Build an intercepted Navigation API route whose URL commits immediately,
+shows a pending state, awaits asynchronous data and then swaps content inside
+document.startViewTransition(). Await transition.updateCallbackDone before
+performing work that assumes the new DOM exists. Use a monotonically increasing
+render token or AbortController so a slow older route cannot overwrite a newer
+navigation.
+
+Set intercept options to manual scroll and focus reset when the application
+owns those behaviors. After rendering, move focus to the new page heading with
+tabindex=-1 and preventScroll, then call the NavigateEvent's scroll() method at
+the correct readiness point. Skip the visual transition under reduced motion;
+never skip the route or focus update.`
+  ),
+
+  'navigation-api/traversal-direction': fx(
+    'History-aware route transition direction',
+    `Build spatial route transitions that distinguish forward navigation from
+back traversal. During a Navigation API navigate event, compare
+event.destination.index with navigation.currentEntry.index before interception.
+Write data-direction="back" or "forward" on the root. Use that attribute to
+swap the old/new View Transition keyframes: forward content exits inline-start
+and enters from inline-end; back does the reverse.
+
+Keep distances modest, pair exit with faster ease-in and entry with slower
+ease-out, and animate a named route container rather than the entire document.
+History direction is supporting information, never the only indication of
+location. Reduce all transition duration effectively to zero for users who
+prefer reduced motion.`
   ),
 };

@@ -1,6 +1,6 @@
 # frontend-experimentations
 
-A gallery of modern frontend technique — **37 self-contained pages**, one per
+A gallery of modern frontend technique — **41 self-contained pages**, one per
 topic, each written to be read and copy-pasted rather than installed.
 
 Every page lives in `demos/<slug>/` as one HTML file, one ES module and its own
@@ -26,7 +26,7 @@ This is what makes the repo reusable rather than just readable. The unit is a
 shimmer. Open any demo, hover an individual effect, and a small `✦ prompt`
 badge appears — click it to copy the brief that recreates *that exact thing*.
 
-**153 effects across all 37 demos**, each individually addressable.
+**164 effects across all 41 demos**, each individually addressable.
 
 Paste it into Claude, ChatGPT, Cursor or v0 and you get a working,
 self-contained implementation back. The prompts never reference this repo, this
@@ -87,7 +87,9 @@ between a page that looks designed and one that looks assembled.
 | [Dialogs & Drawers](demos/dialog/) | Native modal focus behavior, discrete entry/exit transitions, side drawers, and a velocity-aware drag-to-dismiss sheet. |
 | [Toasts & Notifications](demos/toast/) | A bounded queue, coalesced duplicates, honest pauseable timers, live-region announcements, and swipe dismissal. |
 | [Command Palette](demos/command-palette/) | The ⌘K pattern with stable fuzzy scoring, highlighted matches, grouped results, and the combobox/listbox keyboard model. |
-| [Menus & Disclosure](demos/menus/) | Popover action menus with roving focus, diagonal-safe mega-menu intent, and exclusive native details accordions. |
+| [Menus & Disclosure](demos/menus/) | Popover action menus with roving focus, diagonal-safe mega-menu intent, and always-visible implementation guidance. |
+| [Interest Invokers & Hints](demos/interest-popovers/) | Declarative hover/focus/long-press previews, warm intent delays, hint popovers, and dual-purpose controls. |
+| [Navigation API Router](demos/navigation-api/) | Unified navigation interception, async rendering, history-aware transitions, focus, and scroll restoration. |
 
 ### Modern CSS — no runtime at all
 
@@ -103,6 +105,8 @@ between a page that looks designed and one that looks assembled.
 | [Gooey Morphing](demos/gooey-morph/) | The `feGaussianBlur` + `feColorMatrix` alpha-ramp trick, turbulence displacement, film grain. |
 | [CSS 3D Space](demos/css-3d/) | `perspective`, `preserve-3d`, z-layered parallax, `backface-visibility`, scroll-driven coverflow. |
 | [Text Effects Lab](demos/text-effects/) | Nine headline treatments: shine, pointer spotlight mask, glitch, blur-in, neon, scramble, `@property` gradients. |
+| [CSS-Native Carousel](demos/css-carousel/) | Generated scroll buttons and markers, current-target styling, scroll snap, and snapped-state container queries. |
+| [Customizable Select](demos/custom-select/) | `appearance: base-select`, rich options, `selectedcontent`, top-layer picker styling, and native fallback. |
 
 ### Canvas 2D
 

@@ -26,7 +26,7 @@ body {
 .hero {
   max-width: 1180px;
   margin: 0 auto;
-  padding: clamp(4rem, 12vh, 9rem) var(--pad) 2.5rem;
+  padding: clamp(2rem, 6vh, 4rem) var(--pad) 1rem;
 }
 
 .hero__eyebrow {
@@ -35,64 +35,14 @@ body {
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--fg-faint);
-  margin: 0 0 1.4rem;
-}
-
-.hero__title {
-  font-size: clamp(2.6rem, 8vw, 5.5rem);
-  font-weight: 680;
-  letter-spacing: -0.045em;
-  margin-bottom: 1.2rem;
-}
-
-.hero__grad {
-  background: linear-gradient(100deg, var(--accent), var(--accent-2) 45%, var(--accent-3));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-.hero__lede {
-  max-width: 56ch;
-  color: var(--fg-dim);
-  font-size: clamp(1rem, 1.6vw, 1.15rem);
   margin: 0;
-}
-
-/* Deliberately NOT flex: these children are inline text, and making them flex
-   items lays each one out as its own column instead of letting the sentence
-   wrap normally. */
-.hero__prompt {
-  display: block;
-  max-width: 60ch;
-  margin: 1.6rem 0 0;
-  padding: 0.7rem 1.1rem;
-  border: 1px solid color-mix(in oklch, var(--accent) 35%, var(--line));
-  border-radius: var(--radius);
-  background: color-mix(in oklch, var(--accent) 9%, transparent);
-  font-size: 0.88rem;
-  color: var(--fg-dim);
-}
-.hero__prompt span {
-  color: var(--accent-2);
-  margin-right: 0.35rem;
-}
-.hero__prompt strong {
-  color: var(--fg);
-  font-weight: 600;
-}
-.hero__prompt em {
-  font-style: normal;
-  font-family: var(--font-mono);
-  font-size: 0.82em;
-  color: var(--accent-2);
 }
 
 .filters {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  margin-top: 2.4rem;
+  margin-top: 1rem;
 }
 
 .filters button {
