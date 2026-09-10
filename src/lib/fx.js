@@ -3265,8 +3265,9 @@ return. That asymmetry is what makes it feel responsive rather than springy.`
 different rates.
 
   const lenis = new Lenis({ lerp: 0.1, smoothWheel: true, syncTouch: false });
-  function frame(time) { lenis.raf(time); requestAnimationFrame(frame); }
-  requestAnimationFrame(frame);
+  lenis.on('scroll', ScrollTrigger.update);
+  gsap.ticker.add(time => lenis.raf(time * 1000));
+  gsap.ticker.lagSmoothing(0);
 
   lenis.on('scroll', ({ scroll }) => {
     for (const layer of layers)
@@ -3275,9 +3276,9 @@ different rates.
   });
 
 Rules that decide whether this works or ruins the page:
-- ONE requestAnimationFrame loop calling lenis.raf(time) with the RAW
-  millisecond timestamp. A second competing loop is the most common source of
-  stutter in Lenis projects.
+- ONE animation clock. When GSAP is present, drive Lenis from gsap.ticker and
+  convert its seconds to milliseconds. Never also start a requestAnimationFrame
+  loop; calling lenis.raf twice per frame creates stutter.
 - Derive every effect from the single 'scroll' event rather than adding more
   scroll listeners.
 - syncTouch: false — mobile browsers already scroll well, and overriding it
@@ -3289,6 +3290,41 @@ Rules that decide whether this works or ruins the page:
 - Be honest about the cost: it breaks find-in-page, scroll restoration and
   native anchor jumps, and it is incompatible with CSS scroll-driven
   animations, which read the real scroll offset.`
+  ),
+
+  'smooth-scroll/lenis-gsap-bridge': fx(
+    'Lenis and ScrollTrigger synchronized on one GSAP ticker',
+    `Integrate Lenis with GSAP ScrollTrigger without competing clocks. Register
+ScrollTrigger once, instantiate Lenis with autoRaf disabled, forward Lenis's
+scroll event to ScrollTrigger.update, and add exactly one GSAP ticker callback:
+
+  const lenis = new Lenis({ lerp: 0.1, autoRaf: false });
+  lenis.on('scroll', ScrollTrigger.update);
+  const tick = time => lenis.raf(time * 1000);
+  gsap.ticker.add(tick);
+  gsap.ticker.lagSmoothing(0);
+
+GSAP ticker time is seconds and lenis.raf expects milliseconds. Do not also run
+a requestAnimationFrame loop. After fonts, images, or dynamic content change
+layout, call lenis.resize() and ScrollTrigger.refresh(). In component code,
+remove tick from the ticker, revert the gsap.context, disconnect observers, and
+destroy Lenis on unmount. Skip eased scrolling entirely for reduced motion.`
+  ),
+
+  'smooth-scroll/directional-nav': fx(
+    'Direction-aware chapter navigation with page progress',
+    `Build a compact sticky chapter navigation driven by one smooth-scroll
+event. Write normalized page progress to a CSS custom property and scale a
+single progress bar from the left. When signed velocity is meaningfully
+positive, hide the navigation upward; when direction becomes negative or
+velocity settles near zero, reveal it again. Use thresholds so trackpad noise
+cannot flicker the bar.
+
+Create one ScrollTrigger per labelled chapter with start='top center' and
+end='bottom center'; onToggle updates the visible chapter only while the trigger
+is active. Navigation controls call the shared Lenis scrollTo instance with a
+sticky-header offset. Keep controls as real buttons or links, announce scripted
+destinations, and leave the navigation permanently visible under reduced motion.`
   ),
 
   'smooth-scroll/velocity-skew': fx(
@@ -3316,30 +3352,74 @@ broken transform. Add will-change: transform on the skewed element, and skip
 the effect entirely under prefers-reduced-motion.`
   ),
 
+  'smooth-scroll/velocity-marquee': fx(
+    'Velocity-reactive infinite marquee',
+    `Build two seamless typography marquees that retain a calm autonomous pace
+but accelerate when the user scrolls. Each row contains two identical,
+non-shrinking sets. Animate the full row exactly 50 percent in one direction;
+animate the second row from -50 percent to zero. Use a linear GSAP tween with
+repeat:-1 so the duplicate replaces the departing set without a seam.
+
+Read absolute eased scroll velocity from the existing Lenis event, map and
+clamp it to a restrained 0.65–3.8 multiplier, then use gsap.quickTo on each
+tween's timeScale with roughly 0.55 seconds of easing. Do not recreate tweens
+inside the scroll callback. Mark duplicate text aria-hidden so assistive
+technology reads each phrase only once. Stop the loops under reduced motion.`
+  ),
+
+  'smooth-scroll/parallax-gallery': fx(
+    'Locally scrubbed masked parallax gallery',
+    `Build an editorial gallery where each media window clips oversized inner
+artwork. For every figure, create one ScrollTrigger that maps the figure's own
+journey from top-bottom to bottom-top and scrubs the inner artwork from a small
+negative yPercent to a matching positive yPercent. Use another short scrub from
+top 88 percent to top 48 percent to open clip-path from a vertical inset to
+zero. Vary depth slightly by index without letting content expose an edge.
+
+Animate the inner media, never the clipping frame, for parallax; animate the
+frame, never the media, for reveal. This separation avoids transform and mask
+interference. Use overflow:hidden, oversized media, will-change only on moving
+layers, invalidate measurements after image decode, and show the complete
+unclipped static artwork under prefers-reduced-motion.`
+  ),
+
+  'smooth-scroll/canvas-sequence': fx(
+    'Scroll-scrubbed canvas frame sequence',
+    `Build a tall section containing a viewport-height sticky canvas. Create a
+ScrollTrigger whose start and end span the sticky travel and use normalized
+self.progress as a deterministic playhead. Convert it to an integer frame with
+round(progress * (frameCount - 1)), render only when that index changes, and
+show the current frame for debugging. Scale the canvas backing store by device
+pixel ratio capped at 2, redraw after ResizeObserver changes, and use a cover
+calculation so frames never stretch.
+
+For production image sequences, preload a small priority window around the
+current frame rather than downloading hundreds at once; cache decoded images,
+draw the nearest available frame while another loads, and abort obsolete
+requests. Keep DOM copy above the canvas. Under reduced motion, render one
+representative frame and remove the long scroll travel.`
+  ),
+
   'smooth-scroll/sticky-depth-stack': fx(
     'Sticky cards that recede as the next arrives',
-    `Build a stack of full-height cards that stick in place and recede in scale
-and brightness as the following card scrolls over them.
+    `Build a genuine sticky card stack inside one shared parent. Make every card
+position:sticky with a top offset that increases by roughly 18px per index, a
+higher z-index than the previous card, and enough bottom margin for the next
+card to travel into view. Because all cards share the same containing block,
+earlier cards remain pinned while successors cover them; separate per-card
+wrappers would release each card before the next arrives.
 
-The mechanism: each card is position: sticky inside its own tall track. As it
-passes its sticky point, compute how far past it has travelled and map that to
-scale and brightness:
-
-  const r = card.getBoundingClientRect();
-  const past = clamp((stickyTop - r.top) / (r.height * 0.9), 0, 1);
-  card.style.transform = 'scale(' + (1 - past * 0.12) + ') translateY(' + (-past * 40) + 'px)';
-  card.style.filter = 'brightness(' + (1 - past * 0.45) + ')';
-
-Each card needs its own track element (not siblings in one container), or they
-all stick at the same offset and overlap immediately.
-
-Keep the scale reduction modest (~12%) and the brightness drop noticeable —
-brightness does more of the perceptual work than scale, because it reads as
-distance and shadow rather than as the card simply shrinking.
-
-This can be done entirely in CSS with animation-timeline: view() if you are not
-already using a smooth-scroll library — which is the better option when
-available.`
+For every card except the last, create a ScrollTrigger whose trigger is the NEXT
+card. Start when that successor reaches the viewport bottom and end when it
+reaches its sticky top. Scrub only the previous card toward scale 0.94,
+brightness 0.72 and slightly lower saturation. Do not translate the sticky
+element or animate the incoming card. Use center-top transform-origin, restrained
+darkening, progressively offset tops, and layered shadows so all accumulated
+edges remain visible. Set an explicit CSS baseline of filter:brightness(1)
+saturate(1) before creating the tween; interpolating from filter:none can make
+GSAP begin near brightness(0), causing a black flash followed by a backwards
+fade-in. Under reduced motion, keep the complete static stack and remove
+transform/filter animation.`
   ),
 
   'smooth-scroll/lenis-scrollto': fx(

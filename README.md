@@ -30,7 +30,7 @@ This is what makes the repo reusable rather than just readable. The unit is a
 shimmer. Open any demo, hover an individual effect, and a small `✦ prompt`
 badge appears — click it to copy the brief that recreates *that exact thing*.
 
-**184 effects across all 47 demos**, each individually addressable.
+**189 effects across all 47 demos**, each individually addressable.
 
 Paste it into Claude, ChatGPT, Cursor or v0 and you get a working,
 self-contained implementation back. The prompts never reference this repo, this
@@ -146,7 +146,7 @@ between a page that looks designed and one that looks assembled.
 | --- | --- |
 | [GSAP ScrollTrigger](demos/gsap-scrolltrigger/) | Pinning, scrubbed timelines, snapping, horizontal scroll, counters, split text. |
 | [Springs & Layout](demos/spring-ui/) | Motion springs, drag with release velocity, shared-layout FLIP morphing, `hover()` / `press()` gestures. |
-| [Smooth Scroll & Parallax](demos/smooth-scroll/) | Lenis virtual scroll feeding parallax, velocity skew and a sticky depth stack from one rAF loop. |
+| [Smooth Scroll & Parallax](demos/smooth-scroll/) | Lenis and GSAP on one clock: directional navigation, kinetic marquees, masked parallax, canvas sequences and sticky depth. |
 | [Drag & Reorder](demos/drag-reorder/) | Stable priority sorting, accessible move controls, and a persistent cross-column Kanban board with undo. |
 
 ---

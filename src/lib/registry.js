@@ -398,8 +398,8 @@ export const DEMOS = [
     title: 'Smooth Scroll & Parallax',
     category: 'motion',
     blurb:
-      'Lenis virtual scrolling wired into a depth-layered parallax scene, with velocity feeding a skew distortion.',
-    tags: ['lenis', 'parallax', 'raf'],
+      'Lenis and GSAP on one clock: direction-aware navigation, kinetic marquees, masked parallax, canvas sequences and sticky depth.',
+    tags: ['lenis', 'GSAP', 'parallax'],
   },
   {
     slug: 'drag-reorder',

@@ -6,165 +6,152 @@
     <title>Smooth Scroll &amp; Parallax — Frontend Experimentations</title>
     <link rel="stylesheet" href="../../src/styles/base.css" />
     <style>
-      /* Lenis needs these two rules; without them the page fights itself. */
       html.lenis, html.lenis body { height: auto; }
       .lenis.lenis-smooth { scroll-behavior: auto !important; }
       .lenis.lenis-stopped { overflow: hidden; }
+      main { max-width: 1120px; margin: 0 auto; padding: 0 var(--pad) 10rem; }
+      section { margin: 18vh 0; scroll-margin-top: 8rem; }
+      h2 { font-size: clamp(1.7rem, 5vw, 3rem); letter-spacing: -.035em; }
+      .lead { max-width: 72ch; color: var(--fg-dim); }
+      .label { margin-bottom: .9rem; color: var(--fg-faint); font: .7rem var(--font-mono); letter-spacing: .12em; text-transform: uppercase; }
 
-      .hero {
-        height: 100vh; display: grid; place-content: center; text-align: center;
-        position: relative; overflow: hidden;
-      }
-      .hero h2 { font-size: clamp(3rem, 14vw, 11rem); letter-spacing: -0.05em; margin: 0; line-height: 0.9; }
-      .hero p { color: var(--fg-dim); }
-      .hero__layer { position: absolute; inset: -30% 0; will-change: transform; pointer-events: none; }
-      .hero__layer:nth-of-type(1) { background: radial-gradient(45% 40% at 25% 35%, oklch(45% 0.22 275 / .85), transparent); }
-      .hero__layer:nth-of-type(2) { background: radial-gradient(40% 35% at 75% 55%, oklch(50% 0.2 190 / .75), transparent); }
-      .hero__layer:nth-of-type(3) { background: radial-gradient(35% 30% at 50% 80%, oklch(55% 0.24 330 / .7), transparent); }
+      .scroll-nav { position: sticky; top: 3.55rem; z-index: 80; display: flex; align-items: center; gap: .75rem; width: min(760px, calc(100% - 2 * var(--pad))); margin: 1rem auto 0; padding: .55rem .7rem; border: 1px solid var(--line); border-radius: 999px; background: color-mix(in oklch, var(--bg-1) 82%, transparent); backdrop-filter: blur(16px); transition: transform .35s var(--ease-out), opacity .35s; }
+      .scroll-nav.is-hidden { transform: translateY(-140%); opacity: 0; }
+      .scroll-nav__progress { position: absolute; inset: auto .75rem 0; height: 2px; overflow: hidden; border-radius: 99px; background: var(--line); }
+      .scroll-nav__progress::after { content: ''; display: block; width: 100%; height: 100%; background: var(--accent); transform: scaleX(var(--page-progress, 0)); transform-origin: left; }
+      .scroll-nav strong { margin-right: auto; padding-left: .3rem; font-size: .75rem; }
+      .scroll-nav button { padding: .3rem .55rem; border: 0; background: none; color: var(--fg-dim); font: .67rem var(--font-mono); cursor: pointer; }
+      .scroll-nav button:hover, .scroll-nav button:focus-visible { color: var(--accent-2); }
 
-      main { max-width: 1000px; margin: 0 auto; padding: 0 var(--pad) 10rem; }
-      section { margin: 14vh 0; }
-      h3 { font-size: 1.25rem; }
-      .lead { color: var(--fg-dim); max-width: 64ch; }
-      .label { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-faint); margin-bottom: 0.9rem; }
+      .hero { position: relative; display: grid; height: 92vh; place-content: center; overflow: hidden; text-align: center; }
+      .hero h2 { position: relative; margin: 0; font-size: clamp(4rem, 15vw, 11rem); line-height: .82; letter-spacing: -.065em; }
+      .hero p { position: relative; color: var(--fg-dim); }
+      .hero__layer { position: absolute; inset: -35% 0; pointer-events: none; will-change: transform; }
+      .hero__layer:nth-of-type(1) { background: radial-gradient(44% 38% at 22% 35%, oklch(48% .23 275 / .82), transparent); }
+      .hero__layer:nth-of-type(2) { background: radial-gradient(38% 34% at 78% 52%, oklch(52% .2 190 / .72), transparent); }
+      .hero__layer:nth-of-type(3) { background: radial-gradient(34% 30% at 50% 82%, oklch(56% .24 330 / .68), transparent); }
+      .bridge-badge { position: absolute; right: var(--pad); bottom: 2rem; padding: .55rem .7rem; border: 1px solid var(--line); border-radius: 10px; background: color-mix(in oklch, var(--bg-1) 80%, transparent); color: var(--fg-faint); font: .68rem/1.6 var(--font-mono); text-align: left; backdrop-filter: blur(12px); }
+      .bridge-badge b { color: var(--accent-2); font-weight: 500; }
 
-      /* velocity-skewed cards */
-      .skewed { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
-      .skewed > div {
-        border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg-1);
-        padding: 1.4rem; min-height: 170px; will-change: transform;
-      }
-      .skewed h4 { margin: 0 0 0.4rem; font-size: 1rem; }
-      .skewed p { margin: 0; font-size: 0.85rem; color: var(--fg-dim); }
+      .telemetry { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); gap: .8rem; margin-top: 2rem; }
+      .telemetry article { min-height: 150px; padding: 1.2rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg-1); will-change: transform; }
+      .telemetry code { color: var(--accent-2); }
+      .telemetry p { color: var(--fg-dim); font-size: .82rem; }
 
-      /* depth stack */
-      .depth { position: relative; height: 120vh; }
-      .depth__item {
-        position: sticky; top: 18vh; height: 62vh; border-radius: var(--radius);
-        display: grid; place-items: center; font-size: clamp(1.6rem, 5vw, 3rem); font-weight: 700;
-        border: 1px solid var(--line); will-change: transform;
-      }
+      .marquee-stage { overflow: hidden; margin-inline: calc(50% - 50vw); padding: 2rem 0; border-block: 1px solid var(--line); background: var(--bg-1); }
+      .marquee-row { display: flex; width: max-content; will-change: transform; }
+      .marquee-row + .marquee-row { margin-top: .45rem; }
+      .marquee-set { display: flex; flex-shrink: 0; gap: 1.1rem; padding-right: 1.1rem; }
+      .marquee-set span { font-size: clamp(2.6rem, 8vw, 6.5rem); font-weight: 750; line-height: .95; letter-spacing: -.06em; white-space: nowrap; }
+      .marquee-row:nth-child(2) span { color: transparent; -webkit-text-stroke: 1px var(--fg-dim); }
 
-      .hud {
-        position: fixed; right: 1.2rem; bottom: 1.2rem; z-index: 90;
-        font-family: var(--font-mono); font-size: 0.72rem; color: var(--fg-faint);
-        background: color-mix(in oklch, var(--bg-1) 80%, transparent);
-        border: 1px solid var(--line); border-radius: var(--radius-sm);
-        padding: 0.6rem 0.8rem; backdrop-filter: blur(10px); line-height: 1.7;
-        min-width: 150px;
-      }
-      .hud b { color: var(--accent-2); font-weight: 500; }
-      .hud button {
-        font: inherit; font-size: 0.7rem; margin-top: 0.4rem; width: 100%;
-        background: var(--bg-2); color: var(--fg); border: 1px solid var(--line);
-        border-radius: 100px; padding: 0.25rem; cursor: pointer;
-      }
-      .anchors { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 1rem; }
-      .anchors button {
-        font: inherit; font-size: 0.8rem; background: var(--bg-2); color: var(--fg);
-        border: 1px solid var(--line); border-radius: 100px; padding: 0.35rem 0.85rem; cursor: pointer;
-      }
+      .gallery { display: grid; grid-template-columns: repeat(12, 1fr); gap: clamp(1rem, 3vw, 2.2rem); margin-top: 2rem; }
+      .parallax-card { grid-column: span 7; }
+      .parallax-card:nth-child(even) { grid-column: 6 / span 7; }
+      .media-window { height: clamp(300px, 58vw, 620px); overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg-1); clip-path: inset(10% 0 10% 0 round var(--radius)); }
+      .media-art { height: 130%; margin-top: -15%; will-change: transform; }
+      .art-a { background: radial-gradient(circle at 30% 28%, oklch(80% .18 75), transparent 15%), linear-gradient(145deg, oklch(28% .15 270), oklch(55% .2 330)); }
+      .art-b { background: repeating-radial-gradient(circle at 70% 40%, transparent 0 24px, oklch(85% .12 190 / .55) 25px 27px), linear-gradient(145deg, oklch(22% .1 220), oklch(48% .2 180)); }
+      .art-c { background: conic-gradient(from 90deg at 65% 45%, oklch(65% .22 20), oklch(25% .16 280), oklch(70% .18 80), oklch(65% .22 20)); }
+      .parallax-card figcaption { display: flex; justify-content: space-between; gap: 1rem; padding-top: .7rem; color: var(--fg-faint); font: .7rem var(--font-mono); }
+
+      .sequence { position: relative; height: 230vh; }
+      .sequence__sticky { position: sticky; top: 4rem; display: grid; height: calc(100vh - 5rem); place-items: center; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: oklch(12% .03 260); }
+      .sequence canvas { width: 100%; height: 100%; }
+      .sequence__copy { position: absolute; inset: auto auto 2rem 2rem; max-width: 28rem; pointer-events: none; }
+      .sequence__copy h2 { margin: 0; color: white; }
+      .sequence__copy p { color: oklch(85% 0 0 / .7); }
+      .sequence__frame { position: absolute; top: 1.2rem; right: 1.2rem; color: white; font: .7rem var(--font-mono); }
+
+      .depth-stack { position: relative; padding-bottom: 26vh; }
+      .depth-card { position: sticky; top: calc(14vh + var(--i) * 18px); z-index: calc(1 + var(--i)); display: flex; height: 66vh; min-height: 430px; flex-direction: column; justify-content: space-between; margin-bottom: 38vh; padding: clamp(1.4rem, 4vw, 3.2rem); overflow: hidden; border: 1px solid color-mix(in oklch, white 18%, transparent); border-radius: var(--radius); color: white; filter: brightness(1) saturate(1); transform-origin: center top; box-shadow: 0 28px 80px oklch(0% 0 0 / .28); will-change: transform, filter; }
+      .depth-card::after { content: attr(data-word); position: absolute; right: -.035em; bottom: -.23em; color: oklch(100% 0 0 / .08); font-size: clamp(8rem, 23vw, 18rem); font-weight: 800; line-height: 1; letter-spacing: -.09em; pointer-events: none; }
+      .depth-card:nth-child(1) { background: radial-gradient(circle at 18% 8%, oklch(72% .2 260 / .55), transparent 38%), linear-gradient(145deg, oklch(48% .22 265), oklch(23% .15 305)); }
+      .depth-card:nth-child(2) { background: radial-gradient(circle at 82% 12%, oklch(78% .17 175 / .48), transparent 36%), linear-gradient(145deg, oklch(44% .18 188), oklch(21% .13 230)); }
+      .depth-card:nth-child(3) { margin-bottom: 0; background: radial-gradient(circle at 22% 12%, oklch(78% .19 65 / .48), transparent 38%), linear-gradient(145deg, oklch(48% .2 25), oklch(24% .14 62)); }
+      .depth-card__top { display: flex; justify-content: space-between; color: oklch(100% 0 0 / .7); font: .7rem var(--font-mono); letter-spacing: .1em; text-transform: uppercase; }
+      .depth-card__copy { position: relative; z-index: 1; max-width: 42rem; }
+      .depth-card h3 { margin: 0; font-size: clamp(2.6rem, 8vw, 6.4rem); line-height: .88; letter-spacing: -.065em; }
+      .depth-card p { max-width: 38ch; margin: 1rem 0 0; color: oklch(100% 0 0 / .72); font-size: clamp(.9rem, 1.7vw, 1.08rem); }
+
+      .anchors { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }
+      .anchors button { padding: .4rem .85rem; border: 1px solid var(--line); border-radius: 999px; background: var(--bg-2); color: var(--fg); font: .78rem var(--font-mono); cursor: pointer; }
+      .caveats { padding: 1.4rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg-1); }
+      .caveats li + li { margin-top: .75rem; }
+      @media (max-width: 720px) { .scroll-nav button:nth-of-type(n+3) { display: none; } .parallax-card, .parallax-card:nth-child(even) { grid-column: 1 / -1; } .bridge-badge { display: none; } }
+      @media (prefers-reduced-motion: reduce) { .scroll-nav { transition: none; } .media-window { clip-path: none; } }
     </style>
   </head>
   <body>
-    <div class="hud" id="hud"></div>
-
     <div class="note">
       <h1>Smooth Scroll &amp; Parallax</h1>
-      <p>
-        Lenis intercepts wheel and touch input and drives its own eased scroll
-        position. Everything downstream — parallax, velocity skew, sticky depth —
-        reads from that single value, in one <code>requestAnimationFrame</code>.
-      </p>
+      <p>Lenis provides one eased position and GSAP consumes it on the same ticker. Every effect below shares that clock: no competing animation loops, no duplicated scroll listeners.</p>
     </div>
 
+    <nav class="scroll-nav" id="scrollNav" data-fx="directional-nav" aria-label="Page chapters">
+      <strong id="activeChapter">Depth</strong>
+      <button data-to="#velocity">Velocity</button><button data-to="#marquee">Marquee</button><button data-to="#gallery">Gallery</button><button data-to="#sequence">Sequence</button><button data-to="#stack">Stack</button>
+      <span class="scroll-nav__progress" aria-hidden="true"></span>
+    </nav>
+
     <div class="hero" data-fx="lenis-parallax">
-      <div class="hero__layer" data-depth="0.15"></div>
-      <div class="hero__layer" data-depth="0.35"></div>
-      <div class="hero__layer" data-depth="0.6"></div>
-      <div>
-        <h2 data-depth="-0.1">GLIDE</h2>
-        <p>scroll — or flick, on a trackpad</p>
-      </div>
+      <div class="hero__layer" data-depth="0.12"></div><div class="hero__layer" data-depth="0.3"></div><div class="hero__layer" data-depth="0.52"></div>
+      <div><h2 data-depth="-0.08">GLIDE</h2><p>Lenis position · GSAP ticker · ScrollTrigger state</p></div>
+      <div class="bridge-badge" data-fx="lenis-gsap-bridge">one clock<br /><b>gsap.ticker → lenis.raf → ScrollTrigger.update</b></div>
     </div>
 
     <main>
-      <section>
-        <p class="label">01 · velocity</p>
-        <h3>Cards that lean into the scroll</h3>
-        <p class="lead">
-          Lenis exposes <code>velocity</code> on every scroll event. Mapping it
-          to a small skew and a scale gives the page inertia you can feel
-          without any element actually lagging behind.
-        </p>
-        <div class="skewed" id="skewed" data-fx="velocity-skew"></div>
+      <section id="velocity" data-chapter="Velocity">
+        <p class="label">01 · physical response</p><h2>Velocity becomes a design input</h2>
+        <p class="lead">The signed eased velocity drives a restrained skew and scale. The important part is decay: content settles instead of snapping to rest when wheel input stops.</p>
+        <div class="telemetry" id="telemetry" data-fx="velocity-skew"></div>
       </section>
 
-      <section>
-        <p class="label">02 · sticky depth stack</p>
-        <h3>Cards receding as the next arrives</h3>
-        <div class="depth" data-fx="sticky-depth-stack">
-          <div class="depth__item" style="background: linear-gradient(150deg, oklch(50% .2 265), oklch(28% .14 300))">01</div>
-        </div>
-        <div class="depth">
-          <div class="depth__item" style="background: linear-gradient(150deg, oklch(50% .2 190), oklch(28% .14 230))">02</div>
-        </div>
-        <div class="depth">
-          <div class="depth__item" style="background: linear-gradient(150deg, oklch(50% .2 25), oklch(28% .14 60))">03</div>
+      <section id="marquee" data-chapter="Marquee" data-fx="velocity-marquee">
+        <p class="label">02 · kinetic typography</p><h2>A marquee that responds to intent</h2>
+        <p class="lead">The loops have a calm base pace. Scroll velocity accelerates both tracks, then GSAP eases their timeScale back down instead of rebuilding either tween.</p>
+        <div class="marquee-stage" aria-label="Velocity-reactive marquee">
+          <div class="marquee-row"><div class="marquee-set"><span>SCROLL</span><span>DEPTH</span><span>MOTION</span></div><div class="marquee-set" aria-hidden="true"><span>SCROLL</span><span>DEPTH</span><span>MOTION</span></div></div>
+          <div class="marquee-row"><div class="marquee-set"><span>PARALLAX</span><span>INERTIA</span><span>RHYTHM</span></div><div class="marquee-set" aria-hidden="true"><span>PARALLAX</span><span>INERTIA</span><span>RHYTHM</span></div></div>
         </div>
       </section>
 
-      <section>
-        <p class="label">03 · programmatic scroll</p>
-        <h3>scrollTo, with easing you control</h3>
-        <p class="lead">
-          Anchor links go through <code>lenis.scrollTo()</code>, so they use the
-          same easing curve as manual scrolling instead of the browser's
-          <code>scroll-behavior: smooth</code>.
-        </p>
-        <div class="anchors" data-fx="lenis-scrollto">
-          <button type="button" data-to="top">top</button>
-          <button type="button" data-to=".depth">depth stack</button>
-          <button type="button" data-to="#caveats">caveats</button>
+      <section id="gallery" data-chapter="Gallery" data-fx="parallax-gallery">
+        <p class="label">03 · masked media</p><h2>Windows move slower than their contents</h2>
+        <p class="lead">Each frame reveals with clip-path while the oversized artwork travels in the opposite direction. ScrollTrigger owns local progress, so every card starts and ends relative to its own viewport journey.</p>
+        <div class="gallery">
+          <figure class="parallax-card"><div class="media-window"><div class="media-art art-a"></div></div><figcaption><span>Chromatic field</span><span>depth .18</span></figcaption></figure>
+          <figure class="parallax-card"><div class="media-window"><div class="media-art art-b"></div></div><figcaption><span>Orbital system</span><span>depth .26</span></figcaption></figure>
+          <figure class="parallax-card"><div class="media-window"><div class="media-art art-c"></div></div><figcaption><span>Spectrum fold</span><span>depth .34</span></figcaption></figure>
         </div>
       </section>
 
-      <section id="caveats">
-        <p class="label">04 · the honest part</p>
-        <h3>Smooth scroll is a trade</h3>
-        <ul class="lead">
-          <li>
-            <strong>It breaks native behaviour.</strong> Find-in-page, anchor
-            jumps, scroll restoration, focus scrolling and the scrollbar thumb
-            all have to be re-plumbed through the library.
-          </li>
-          <li>
-            <strong>Some people hate it</strong>, and some get motion sick.
-            Respect <code>prefers-reduced-motion</code> and switch the whole
-            thing off — this demo does.
-          </li>
-          <li>
-            <strong>It cannot use scroll-driven CSS animations.</strong> Native
-            <code>animation-timeline</code> reads the real scroll offset, which
-            is no longer where the content appears to be. Pick one or the other
-            per project.
-          </li>
-          <li>
-            <strong>One rAF loop.</strong> Never call
-            <code>lenis.raf()</code> from a second loop, and never read layout
-            inside the scroll callback — cache your measurements and refresh on
-            resize.
-          </li>
-          <li>
-            The alternative worth considering is nothing at all. Native scrolling
-            is already smooth on every current platform; the case for Lenis is
-            the <em>eased virtual position</em> other effects can read, not the
-            smoothness itself.
-          </li>
-        </ul>
+      <section id="sequence" data-chapter="Sequence">
+        <p class="label">04 · canvas frame sequence</p>
+        <div class="sequence" data-fx="canvas-sequence"><div class="sequence__sticky"><canvas id="sequenceCanvas" aria-label="Abstract orb evolving with scroll"></canvas><span class="sequence__frame" id="sequenceFrame">001 / 120</span><div class="sequence__copy"><h2>Scroll becomes a playhead</h2><p>A sticky canvas renders one deterministic frame from normalized section progress. In production, the same playhead indexes preloaded image frames.</p></div></div></div>
+      </section>
+
+      <section id="stack" data-chapter="Stack">
+        <p class="label">05 · sticky depth</p><h2>The next chapter pushes the last away</h2>
+        <p class="lead">All cards share one sticky stage. The incoming card covers the current one while only the card behind it recedes, preserving contrast and a visible sense of accumulated depth.</p>
+        <div class="depth-stack" data-fx="sticky-depth-stack">
+          <article class="depth-card" style="--i:0" data-word="01"><div class="depth-card__top"><span>01 · Discover</span><span>Signal before surface</span></div><div class="depth-card__copy"><h3>Find the tension.</h3><p>Map the user’s real constraint before choosing a visual mechanism.</p></div></article>
+          <article class="depth-card" style="--i:1" data-word="02"><div class="depth-card__top"><span>02 · Design</span><span>System before screen</span></div><div class="depth-card__copy"><h3>Shape the system.</h3><p>Turn the strongest direction into tokens, states, rhythm and reusable rules.</p></div></article>
+          <article class="depth-card" style="--i:2" data-word="03"><div class="depth-card__top"><span>03 · Deliver</span><span>Proof before polish</span></div><div class="depth-card__copy"><h3>Ship the evidence.</h3><p>Measure the experience, document the edge cases and leave a component behind.</p></div></article>
+        </div>
+      </section>
+
+      <section id="controls" data-chapter="Controls">
+        <p class="label">06 · programmatic navigation</p><h2>Manual and scripted scroll share one feel</h2>
+        <div class="anchors" data-fx="lenis-scrollto"><button data-to="top">Top</button><button data-to="#gallery">Gallery</button><button data-to="#sequence">Sequence</button><button data-to="#caveats">Caveats</button></div>
+      </section>
+
+      <section id="caveats" data-chapter="Caveats" class="caveats">
+        <p class="label">07 · production constraints</p><h2>The honest checklist</h2>
+        <ul class="lead"><li>Disable eased scrolling and large positional effects for <code>prefers-reduced-motion</code>.</li><li>Use one ticker. Calling <code>lenis.raf()</code> from GSAP and another rAF loop creates visible jitter.</li><li>Refresh measurements after fonts, images and dynamic layout changes.</li><li>Do not combine virtual scrolling with native CSS scroll timelines unless their positions genuinely remain synchronized.</li><li>Programmatic scrolling does not move focus; focus meaningful destinations when navigation requires it.</li></ul>
       </section>
     </main>
-
+    <p id="scrollStatus" style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)" aria-live="polite"></p>
     <script type="module" src="./main.js"></script>
   </body>
 </html>
