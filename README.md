@@ -1,6 +1,6 @@
 # frontend-experimentations
 
-A gallery of modern frontend technique — **33 self-contained pages**, one per
+A gallery of modern frontend technique — **37 self-contained pages**, one per
 topic, each written to be read and copy-pasted rather than installed.
 
 Every page lives in `demos/<slug>/` as one HTML file, one ES module and its own
@@ -15,7 +15,7 @@ npm run build    # static output in dist/
 
 Requires Node 20+. Vite builds every `demos/*/index.html` as its own entry, so
 adding a demo is: make the folder, add an entry to `src/lib/registry.js`, add a
-prompt to `src/lib/prompts.js`.
+prompt to `src/lib/fx.js`.
 
 ---
 
@@ -26,7 +26,7 @@ This is what makes the repo reusable rather than just readable. The unit is a
 shimmer. Open any demo, hover an individual effect, and a small `✦ prompt`
 badge appears — click it to copy the brief that recreates *that exact thing*.
 
-**141 effects across all 33 demos**, each individually addressable.
+**153 effects across all 37 demos**, each individually addressable.
 
 Paste it into Claude, ChatGPT, Cursor or v0 and you get a working,
 self-contained implementation back. The prompts never reference this repo, this
@@ -79,6 +79,15 @@ between a page that looks designed and one that looks assembled.
 | [Easing & Timing](demos/easing-lab/) | Every curve plotted *and* played from the same function, a bezier editor, springs with `linear()` output, and the interruption problem. |
 | [Loading & Empty States](demos/loading-states/) | Skeletons that match their content, the real timing thresholds, honest progress, optimistic UI with visible rollback, empty-state design. |
 | [Cursor & Pointer](demos/cursor-fx/) | Custom cursors, context awareness, magnetic pull, a canvas trail, spotlight masks — and the touch-device gate that makes it shippable. |
+
+### Overlays & navigation — native-first interaction patterns
+
+| Demo | Technique |
+| --- | --- |
+| [Dialogs & Drawers](demos/dialog/) | Native modal focus behavior, discrete entry/exit transitions, side drawers, and a velocity-aware drag-to-dismiss sheet. |
+| [Toasts & Notifications](demos/toast/) | A bounded queue, coalesced duplicates, honest pauseable timers, live-region announcements, and swipe dismissal. |
+| [Command Palette](demos/command-palette/) | The ⌘K pattern with stable fuzzy scoring, highlighted matches, grouped results, and the combobox/listbox keyboard model. |
+| [Menus & Disclosure](demos/menus/) | Popover action menus with roving focus, diagonal-safe mega-menu intent, and exclusive native details accordions. |
 
 ### Modern CSS — no runtime at all
 

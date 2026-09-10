@@ -6,6 +6,7 @@
 
 export const CATEGORIES = {
   craft: { label: 'Design Craft', hue: 55 },
+  overlay: { label: 'Overlays & Nav', hue: 215 },
   css: { label: 'Modern CSS', hue: 265 },
   canvas: { label: 'Canvas 2D', hue: 175 },
   webgl: { label: 'WebGL & Shaders', hue: 25 },
@@ -113,6 +114,42 @@ export const DEMOS = [
     blurb:
       'Custom cursors, magnetic buttons, trailing followers and blend-mode inversion — with the touch-device fallbacks.',
     tags: ['cursor', 'pointer', 'hover'],
+  },
+
+  // --- Overlays & navigation ----------------------------------------------
+  // The most-used patterns in any real product, and the ones most often
+  // rebuilt badly from scratch. All four are native-first.
+  {
+    slug: 'dialog',
+    title: 'Dialogs & Drawers',
+    category: 'overlay',
+    blurb:
+      'Native <dialog> for free focus trapping and top-layer stacking, animated open/close, plus a drag-to-dismiss bottom sheet.',
+    tags: ['dialog', 'top layer', 'focus trap'],
+  },
+  {
+    slug: 'toast',
+    title: 'Toasts & Notifications',
+    category: 'overlay',
+    blurb:
+      'A stacking toast system with timers that pause on hover, swipe-to-dismiss, and live regions that announce without interrupting.',
+    tags: ['toast', 'aria-live', 'timers'],
+  },
+  {
+    slug: 'command-palette',
+    title: 'Command Palette',
+    category: 'overlay',
+    blurb:
+      'The ⌘K pattern: fuzzy scoring, grouped results, full keyboard control and the combobox ARIA that makes it usable.',
+    tags: ['⌘K', 'combobox', 'fuzzy'],
+  },
+  {
+    slug: 'menus',
+    title: 'Menus & Disclosure',
+    category: 'overlay',
+    blurb:
+      'Dropdowns with roving tabindex, a mega menu with safe-triangle hover intent, and accordions built on native <details>.',
+    tags: ['menu', 'roving tabindex', 'details'],
   },
 
   // --- Modern CSS ---------------------------------------------------------

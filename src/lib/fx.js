@@ -3366,4 +3366,183 @@ not move FOCUS. After scrolling to a section, call focus() on it (adding
 tabindex="-1" if it is not natively focusable), or keyboard users are moved
 visually while their focus stays behind, and the next Tab jumps them back.`
   ),
+
+  /* ═══ overlays & navigation ═══════════════════════════════════════════ */
+
+  'dialog/modal-dialog': fx(
+    'Native modal with animated entry and exit',
+    `Build an accessible confirmation modal with the native <dialog> element.
+
+Use showModal(), not an open attribute, so the browser moves the dialog to the
+top layer, makes the rest of the document inert, traps focus, supports Escape,
+and restores focus to the opener. Put action buttons in <form method="dialog">
+so their value becomes dialog.returnValue without custom click handlers.
+
+Animate opacity, translate and scale. The non-obvious mechanism is to include
+'display ... allow-discrete' and 'overlay ... allow-discrete' in the transition
+so the closing dialog remains rendered long enough for its exit to play. Use
+@starting-style around dialog:open for the entry frame. Clicking the backdrop
+may requestClose(), but clicks on dialog children must not. Keep an explicit
+close button and never remove the native Escape behavior.`
+  ),
+
+  'dialog/side-drawer': fx(
+    'Side drawer with native modal behavior',
+    `Build a settings drawer that enters from the inline-end edge while using a
+real modal <dialog>. Position it with inset: 0 0 0 auto, height: 100dvh,
+max-height: none and margin: 0. Animate translate from 100% to zero, plus the
+discrete display and overlay properties so both opening and closing animate.
+
+The drawer must use showModal() because a fixed div with a large z-index does
+not make background content inert, contain Tab, respond correctly to Escape,
+or restore focus. Use logical inline concepts in the explanation, constrain its
+width to min(430px, 92vw), and retain visible focus rings for every field and
+button. Under reduced motion, make the transition effectively instant.`
+  ),
+
+  'dialog/drag-sheet': fx(
+    'Velocity-aware drag-to-dismiss bottom sheet',
+    `Build a mobile bottom sheet from a modal <dialog>, with a visible drag
+handle. During pointerdown call setPointerCapture. On pointermove write only a
+non-negative --drag custom property and use it in translate, so the sheet
+follows the finger on the compositor without layout reads every frame.
+
+On release dismiss when either distance exceeds 25% of sheet height OR downward
+velocity exceeds 0.7 px/ms; otherwise remove --drag and let CSS spring it home.
+Compute velocity from the last pointer sample and elapsed milliseconds, not
+from total distance, so a short flick works. Disable transitions only while
+actively dragging. Do not start the gesture for reduced-motion users, and keep
+normal close buttons, Escape, focus containment, and focus restoration.`
+  ),
+
+  'toast/toast-stack': fx(
+    'Bounded toast queue with duplicate coalescing',
+    `Build a bottom-end toast queue where new notices arrive nearest the viewport
+edge. Cap the visible stack at four. When an event with the same semantic key
+already exists, pulse or update that toast instead of adding a duplicate.
+
+Each toast needs a title, concise message and explicit dismiss button. Keep the
+container pointer-events:none and restore pointer-events on each toast so the
+stack does not block the page. Animate new items with opacity plus translate
+and remove only after the exit animation ends. Announce routine status through
+a persistent aria-live="polite" region; use assertive only for time-sensitive
+failures. Do not put live-region semantics on the entire changing stack because
+reordering it causes repeated announcements.`
+  ),
+
+  'toast/pause-timer': fx(
+    'Toast timer that pauses for attention',
+    `Build an auto-dismiss toast with a five-second visual progress line. Pause
+both the CSS animation and JavaScript removal timer on hover AND focus-within.
+Track remaining milliseconds: on pause, clearTimeout and subtract performance.now
+minus the last start; on resume, start a new timeout for exactly the remainder.
+Merely pausing the CSS bar while the JS timeout continues is a dishonest UI.
+
+Never auto-dismiss errors or a toast containing an action such as Undo. Every
+toast needs an always-available close button. Reduced motion should remove the
+animated countdown rather than removing the notification or its controls.`
+  ),
+
+  'toast/swipe-dismiss': fx(
+    'Swipe-to-dismiss toast with a commitment threshold',
+    `Build a toast that can be dragged horizontally with Pointer Events. Capture
+the pointer, translate by the live delta, and dismiss only when absolute drag
+distance exceeds 35% of the toast width OR release velocity exceeds 0.75 px/ms.
+Otherwise remove the inline offset so it settles back.
+
+Do not start a drag from an action or close button. Direction should be free so
+the gesture works on either viewport edge and in either writing direction.
+Keep a keyboard-accessible close button because swipe is an enhancement, not
+the only path. Remove the node after its exit animation rather than immediately,
+and protect against starting removal twice.`
+  ),
+
+  'command-palette/command-shell': fx(
+    'Accessible command palette shell',
+    `Build a Command-K / Control-K command palette using a native <dialog>, a
+text input with role="combobox", and a results container with role="listbox".
+DOM focus must remain in the input while ArrowUp/ArrowDown change a single
+aria-activedescendant that points to the selected role="option". Enter executes
+it and Escape uses the dialog's native close behavior.
+
+Use event.metaKey OR event.ctrlKey so the shortcut is cross-platform and call
+preventDefault to avoid browser conflicts. Scroll the active option with
+scrollIntoView({block:'nearest'}). On every open, clear the query, render all
+commands, and focus the input on the next animation frame. Report execution in
+a polite live region after closing.`
+  ),
+
+  'command-palette/fuzzy-search': fx(
+    'Stable fuzzy command scoring',
+    `Build a small dependency-free fuzzy search for a command palette. Normalize
+case and assign tiers: exact prefix scores highest, prefix of any word next,
+then an ordered-character match. For the fuzzy tier, walk the query characters
+through the candidate and penalize gaps between matches. A missing character
+rejects the candidate.
+
+Return both score and matched character indexes so the UI can wrap only the
+evidence in <mark>. Preserve original command order as a secondary sort key so
+equal scores never jump randomly while typing. Search both command name and
+description, but highlight only indexes that fall within the visible name.
+Render a useful no-results recovery message rather than a blank panel.`
+  ),
+
+  'command-palette/command-states': fx(
+    'Grouped command results and execution feedback',
+    `Build command results grouped by user intent such as Project, Appearance,
+and Accessibility. Filtering must remove empty group headings. Every option
+has an icon, action label, one-line consequence, and optional shortcut, while
+the whole row remains the single interactive target.
+
+Pointer hover updates the same active index used by keyboard navigation—never
+maintain separate hover and keyboard selections. After execution, close the
+palette and announce "Ran: [command]" in an aria-live="polite" status node.
+For zero matches show a compact empty state that suggests shortening the query.
+Do not navigate in this reusable example; inject an execute callback so a host
+application owns side effects.`
+  ),
+
+  'menus/roving-menu': fx(
+    'Popover action menu with roving tabindex',
+    `Build an action menu using a popover element with role="menu", opened by a
+button with aria-haspopup="menu" and popovertarget. Anchor it below the trigger
+with CSS anchor positioning and flip-block fallback.
+
+Inside, use roving tabindex: exactly one role="menuitem" has tabindex=0 and all
+others -1. Arrow keys wrap, Home/End jump, printable characters typeahead by
+label, and Escape hides the popover then returns focus to its trigger. Focus the
+first item after the popover toggle event and a requestAnimationFrame. Use
+:focus for the active row because script deliberately moves focus. The Popover
+API should own top-layer stacking and light-dismiss; do not recreate those with
+document click listeners.`
+  ),
+
+  'menus/safe-triangle': fx(
+    'Mega menu with diagonal hover forgiveness',
+    `Build a desktop mega menu whose panel does not collapse while the pointer
+moves diagonally from a navigation trigger into the panel. Track recent pointer
+coordinates. On trigger leave, compare the pointer trajectory with the panel's
+near edge; if it is moving toward the panel, delay closure about 400ms,
+otherwise close after about 120ms. Cancel the timer on panel enter.
+
+Do not make hover the only interaction: focus opens the corresponding panel,
+aria-expanded reflects state, Escape closes, and all destinations are ordinary
+links. On narrow screens avoid hover dependence and present a stable stacked or
+disclosure layout. Keep the forgiveness delay bounded—this solves accidental
+closure, not sluggish navigation.`
+  ),
+
+  'menus/details-accordion': fx(
+    'Native exclusive accordion with intrinsic animation',
+    `Build an FAQ accordion from native <details>/<summary>. Give related details
+the same name attribute so the browser enforces exclusive open state without
+JavaScript. Hide the platform marker and draw a plus with summary::after that
+rotates when open, while preserving summary's native keyboard behavior.
+
+To animate unknown-height content, put a wrapper inside the details content and
+animate an outer grid from grid-template-rows: 0fr to 1fr; the immediate inner
+child needs overflow:hidden. Explain that removing name permits multiple open
+panels. Do not replace summary with a div, add redundant button roles, or put
+interactive controls inside summary.`
+  ),
 };

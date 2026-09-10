@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Command Palette — Frontend Experimentations</title>
+    <link rel="stylesheet" href="../../src/styles/base.css" />
+    <style>
+      main{max-width:980px;margin:auto;padding:0 var(--pad) 8rem}section{margin:4rem 0}.lead{color:var(--fg-dim);max-width:68ch}.stage{min-height:260px;display:grid;place-items:center;border:1px solid var(--line);border-radius:var(--radius);background:radial-gradient(circle at 50% 0,var(--accent-soft),transparent 52%),var(--bg-1)}
+      button{font:inherit;color:var(--fg);background:var(--bg-2);border:1px solid var(--line);border-radius:12px;padding:.65rem 1rem;cursor:pointer}kbd{margin-left:1.4rem;color:var(--fg-dim)}
+      dialog{width:min(640px,calc(100vw - 1.2rem));padding:0;margin:min(14vh,120px) auto auto;color:var(--fg);background:var(--bg-1);border:1px solid var(--line);border-radius:18px;box-shadow:0 32px 100px oklch(0% 0 0/.6);opacity:0;translate:0 -12px;transition:opacity .18s,translate .24s var(--ease-out),display .24s allow-discrete,overlay .24s allow-discrete}
+      dialog:open{opacity:1;translate:0}dialog::backdrop{background:oklch(8% .02 275/.65);backdrop-filter:blur(5px)}@starting-style{dialog:open{opacity:0;translate:0 -12px}}
+      .search{display:grid;grid-template-columns:auto 1fr auto;gap:.7rem;align-items:center;padding:.85rem 1rem;border-bottom:1px solid var(--line)}.search input{min-width:0;font:inherit;font-size:1rem;color:var(--fg);background:transparent;border:0;outline:0}.search span{color:var(--fg-faint)}
+      .results{max-height:min(52vh,430px);overflow:auto;padding:.5rem}.group{padding:.5rem}.group h3{margin:.2rem .55rem .4rem;font:600 .68rem var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--fg-faint)}
+      .result{display:grid;grid-template-columns:2rem 1fr auto;gap:.7rem;align-items:center;width:100%;padding:.65rem .7rem;border:0;border-radius:10px;text-align:left;background:transparent}.result[aria-selected="true"]{background:var(--accent-soft)}.result__icon{display:grid;place-items:center;width:2rem;height:2rem;border:1px solid var(--line);border-radius:8px}.result small{display:block;color:var(--fg-faint)}.result mark{color:inherit;background:color-mix(in oklch,var(--accent) 32%,transparent);border-radius:3px}.empty{padding:2.2rem;text-align:center;color:var(--fg-dim)}
+      .foot{display:flex;gap:1rem;padding:.65rem 1rem;border-top:1px solid var(--line);font-size:.72rem;color:var(--fg-faint)}.foot kbd{margin:0}.status{position:fixed;inset:auto var(--pad) var(--pad);text-align:center;color:var(--accent-2);pointer-events:none}
+      @media(prefers-reduced-motion:reduce){dialog{transition-duration:.01ms}}
+    </style>
+  </head>
+  <body>
+    <div class="note"><h1>Command Palette</h1><p>A command menu is fast only when its information architecture, scoring, and keyboard model are fast. This one uses a native dialog plus the combobox/listbox pattern.</p></div>
+    <main>
+      <section data-fx="command-shell"><h2>1 · One shortcut, complete keyboard control</h2><p class="lead"><kbd>⌘ K</kbd> / <kbd>Ctrl K</kbd> opens from anywhere. Arrow keys move an active descendant, Enter runs it, Escape closes it, and the text input keeps DOM focus so typing never stops.</p><div class="stage"><button id="launcher">Search commands <kbd>⌘ K</kbd></button></div></section>
+      <section data-fx="fuzzy-search"><h2>2 · Fuzzy scoring with visible evidence</h2><p class="lead">Exact prefix beats word prefix, which beats an ordered character match. Matching characters are highlighted, and results preserve stable order when scores tie.</p><div class="stage"><button class="open">Try “theme”, “deploy”, or “gx”</button></div></section>
+      <section data-fx="command-states"><h2>3 · Groups, empty states, and execution feedback</h2><p class="lead">Commands are grouped by intent rather than implementation. Empty search explains recovery; executing closes the palette and announces the action without navigating this research page.</p><div class="stage"><button class="open">Browse all actions</button></div></section>
+    </main>
+    <dialog id="palette" aria-label="Command palette"><div class="search"><span>⌕</span><input id="query" role="combobox" aria-expanded="true" aria-controls="results" aria-autocomplete="list" placeholder="Type a command…" autocomplete="off" /><kbd>esc</kbd></div><div id="results" class="results" role="listbox"></div><div class="foot"><span><kbd>↑↓</kbd> navigate</span><span><kbd>↵</kbd> run</span><span><kbd>esc</kbd> close</span></div></dialog>
+    <div class="status" id="status" aria-live="polite"></div>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

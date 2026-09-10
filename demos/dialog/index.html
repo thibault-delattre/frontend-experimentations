@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dialogs &amp; Drawers — Frontend Experimentations</title>
+    <link rel="stylesheet" href="../../src/styles/base.css" />
+    <style>
+      main { max-width: 980px; margin: auto; padding: 0 var(--pad) 8rem; }
+      section { margin: 4rem 0; }
+      .lead { color: var(--fg-dim); max-width: 68ch; }
+      .stage { min-height: 220px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg-1); }
+      .actions { display: flex; gap: .7rem; flex-wrap: wrap; }
+      button { font: inherit; border: 1px solid var(--line); border-radius: 999px; padding: .55rem 1rem; color: var(--fg); background: var(--bg-2); cursor: pointer; }
+      button.primary { color: var(--bg-0); background: var(--accent); border-color: transparent; font-weight: 700; }
+      dialog { color: var(--fg); background: var(--bg-1); border: 1px solid var(--line); box-shadow: 0 28px 90px oklch(0% 0 0 / .55); }
+      dialog::backdrop { background: oklch(8% .02 275 / .72); backdrop-filter: blur(5px); }
+      .modal { width: min(480px, calc(100vw - 2rem)); border-radius: 22px; padding: 0; }
+      .panel { padding: 1.4rem; }
+      .panel h3 { margin: 0; }
+      .panel p { color: var(--fg-dim); }
+      .panel footer { display: flex; justify-content: flex-end; gap: .6rem; margin-top: 1.4rem; }
+
+      /* display and overlay are discrete; allow-discrete keeps the element
+         rendered long enough for the exit transition to finish. */
+      dialog { opacity: 0; scale: .97; translate: 0 10px; transition: opacity .22s, scale .22s var(--ease-out), translate .22s var(--ease-out), display .22s allow-discrete, overlay .22s allow-discrete; }
+      dialog:open { opacity: 1; scale: 1; translate: 0; }
+      @starting-style { dialog:open { opacity: 0; scale: .97; translate: 0 10px; } }
+
+      .drawer { inset: 0 0 0 auto; height: 100dvh; width: min(430px, 92vw); max-height: none; margin: 0; border-block: 0; border-right: 0; border-radius: 24px 0 0 24px; translate: 100% 0; scale: 1; }
+      .drawer:open { translate: 0; }
+      @starting-style { .drawer:open { translate: 100% 0; } }
+
+      .sheet { inset: auto 0 0; width: min(680px, 100%); margin: auto; max-height: 88dvh; border-radius: 24px 24px 0 0; border-bottom: 0; padding: 0; translate: 0 100%; scale: 1; touch-action: none; }
+      .sheet:open { translate: 0 var(--drag, 0px); }
+      @starting-style { .sheet:open { translate: 0 100%; } }
+      .handle { width: 48px; height: 5px; border-radius: 9px; background: var(--line); margin: .7rem auto 0; cursor: grab; }
+      .sheet.dragging { transition: none; }
+      @media (prefers-reduced-motion: reduce) { dialog { transition-duration: .01ms; } }
+    </style>
+  </head>
+  <body>
+    <div class="note"><h1>Dialogs &amp; Drawers</h1><p>One semantic primitive, three spatial patterns. Native <code>&lt;dialog&gt;</code> supplies top-layer stacking, modal focus containment, Escape, and focus restoration; CSS and a little gesture code supply the choreography.</p></div>
+    <main>
+      <section data-fx="modal-dialog">
+        <h2>1 · Modal with a real exit</h2>
+        <p class="lead">The browser owns modality. <code>@starting-style</code> creates the entry frame; <code>allow-discrete</code> makes closing animatable instead of disappearing before opacity can run.</p>
+        <div class="stage"><button class="primary" data-open="confirm">Open modal</button></div>
+      </section>
+      <section data-fx="side-drawer">
+        <h2>2 · Focus-safe side drawer</h2>
+        <p class="lead">A drawer is still a dialog—not a fixed div with a heroic z-index. That distinction provides inert background content and restores focus to the opener.</p>
+        <div class="stage"><button data-open="drawer">Open project drawer</button></div>
+      </section>
+      <section data-fx="drag-sheet">
+        <h2>3 · Drag-to-dismiss sheet</h2>
+        <p class="lead">Drag the handle down. Release distance and velocity both count, so a short flick works while a slow accidental movement springs home.</p>
+        <div class="stage"><button data-open="sheet">Open bottom sheet</button></div>
+      </section>
+    </main>
+
+    <dialog class="modal" id="confirm"><form method="dialog" class="panel"><h3>Publish experiment?</h3><p>This makes the demo visible in the public gallery. You can unpublish it later.</p><footer><button value="cancel">Keep draft</button><button class="primary" value="publish">Publish</button></footer></form></dialog>
+    <dialog class="drawer" id="drawer"><form method="dialog" class="panel"><h3>Project settings</h3><p>Native modal behavior means Tab stays here, Escape closes, and the trigger regains focus.</p><p><label>Project name<br /><input value="Frontend dictionary" style="width:100%;margin-top:.4rem;padding:.7rem;background:var(--bg-0);color:var(--fg);border:1px solid var(--line);border-radius:8px" /></label></p><footer><button value="close">Close</button><button class="primary" value="save">Save</button></footer></form></dialog>
+    <dialog class="sheet" id="sheet"><div class="handle" aria-hidden="true"></div><form method="dialog" class="panel"><h3>Share experiment</h3><p>Anyone with the link can inspect the implementation and copy its prompt.</p><div class="actions"><button value="copy">Copy link</button><button value="mail">Send email</button><button value="cancel">Cancel</button></div></form></dialog>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
