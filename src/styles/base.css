@@ -204,6 +204,57 @@ canvas {
   pointer-events: auto;
 }
 
+.fx-target {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 6px;
+  animation: fx-arrival 0.7s var(--ease-out) 2 alternate;
+}
+
+/* Prompt-vault iframes show the specimen, not the surrounding demo chrome. */
+.asset-preview {
+  scrollbar-width: none;
+}
+.asset-preview::-webkit-scrollbar {
+  display: none;
+}
+.asset-preview :is(.demo-bar, .note, .fallback, .fx-btn) {
+  display: none !important;
+}
+.asset-preview body > :not(.fx-preview-ancestor),
+.asset-preview .fx-preview-ancestor > :not(.fx-preview-ancestor):not(.fx-preview-target) {
+  display: none !important;
+}
+.asset-preview .fx-preview-target {
+  margin-inline: auto;
+}
+.asset-preview .fx-preview-ancestor {
+  display: block !important;
+  width: 100% !important;
+  max-width: none !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+.asset-preview section.fx-preview-target {
+  width: 100% !important;
+  max-width: none !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 1rem !important;
+}
+.asset-preview section.fx-preview-target > :is(h1, h2, h3, p, pre) {
+  display: none !important;
+}
+.asset-preview .fx-blur span {
+  animation: none !important;
+  opacity: 1 !important;
+  filter: none !important;
+  transform: none !important;
+}
+@keyframes fx-arrival {
+  to { outline-offset: 12px; filter: brightness(1.15); }
+}
+
 .fx-btn:hover {
   background: var(--fg);
 }

@@ -16,6 +16,8 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: path.resolve(root, 'index.html'),
+        prompts: path.resolve(root, 'prompts.html'),
+        experiments: path.resolve(root, 'experiments.html'),
         ...Object.fromEntries(
           pages.map((p) => [p.split('/')[1], path.resolve(root, p)])
         ),

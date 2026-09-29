@@ -49,7 +49,7 @@ function relativeTime(timestamp) {
   return `${Math.floor(days / 30)}mo ago`;
 }
 
-function cardMarkup(demo) {
+function cardMarkup(demo, index) {
   const favorite = favorites.has(demo.slug);
   return `
     <article class="card" data-slug="${demo.slug}" data-cat="${demo.category}"
@@ -62,6 +62,11 @@ function cardMarkup(demo) {
         <span aria-hidden="true">${favorite ? '★' : '☆'}</span>
       </button>
       <a class="card__link" href="${new URL(`demos/${demo.slug}/index.html`, appRoot).href}">
+        <span class="card__visual card__visual--${index % 6}" aria-hidden="true">
+          <span class="card__glyph">${String(index + 1).padStart(2, '0')}</span>
+          <span class="card__shape"></span>
+          <span class="card__line"></span>
+        </span>
         <span class="card__cat">${CATEGORIES[demo.category].label}</span>
         <h2 class="card__title">${demo.title}</h2>
         <p class="card__blurb">${demo.blurb}</p>

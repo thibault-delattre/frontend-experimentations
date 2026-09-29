@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Experiments — Frontend Experimentations</title>
+    <meta name="description" content="47 modern frontend experiments across CSS, Canvas, WebGL, WebGPU and motion." />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./src/styles/base.css" />
+    <link rel="stylesheet" href="./src/styles/home.css" />
+  </head>
+  <body>
+    <div class="aurora" aria-hidden="true"></div>
+    <header class="hero">
+      <nav class="site-nav" aria-label="Primary navigation">
+        <a class="brand" href="./index.html">
+          <span class="brand__mark" aria-hidden="true">F<span>·</span>X</span>
+          <span>Frontend<br />Experimentations</span>
+        </a>
+        <div class="site-nav__links">
+          <a href="#grid" aria-current="page">Experiments</a>
+          <a class="site-nav__vault" href="./index.html">Prompt vault <span>189</span></a>
+        </div>
+      </nav>
+      <div class="hero__ticker" aria-label="Library statistics">
+        <span><strong>47</strong> live experiments</span>
+        <span><strong>189</strong> copy-ready prompts</span>
+        <span><strong>0</strong> generic templates</span>
+      </div>
+      <nav class="filters" id="filters" aria-label="Filter by category"></nav>
+    </header>
+    <main class="grid" id="grid"></main>
+    <script type="module" src="./src/home.js"></script>
+  </body>
+</html>

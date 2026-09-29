@@ -3,32 +3,47 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Frontend Experimentations</title>
-    <meta
-      name="description"
-      content="A gallery of modern frontend effects: CSS, canvas, WebGL, WebGPU shaders and motion."
-    />
+    <title>Frontend Experimentations — Prompt Vault</title>
+    <meta name="description" content="189 interactive frontend effects with copy-ready implementation prompts." />
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="./src/styles/base.css" />
-    <link rel="stylesheet" href="./src/styles/home.css" />
+    <link rel="stylesheet" href="./src/styles/prompts.css" />
   </head>
   <body>
-    <div class="aurora" aria-hidden="true"></div>
-
-    <header class="hero">
-      <p class="hero__eyebrow">frontend-experimentations</p>
-      <nav class="filters" id="filters" aria-label="Filter by category"></nav>
+    <header class="vault-head">
+      <nav class="site-nav" aria-label="Primary navigation">
+        <a class="brand" href="./index.html" aria-current="page">
+          <span class="brand__mark" aria-hidden="true">F<span>·</span>X</span>
+          <span>Frontend<br />Experimentations</span>
+        </a>
+        <a class="back-link" href="./experiments.html">Experiment index →</a>
+      </nav>
     </header>
 
-    <main class="grid" id="grid"></main>
+    <main>
+      <div class="vault-title">
+        <h1>Prompt vault</h1>
+        <p>Interact with a result, then copy its prompt.</p>
+      </div>
+      <section class="controls" aria-label="Find a prompt">
+        <label class="search">
+          <span aria-hidden="true">⌕</span>
+          <span class="sr-only">Search prompt assets</span>
+          <input id="search" type="search" placeholder="Search effects, techniques, properties…" autocomplete="off" />
+          <kbd>/</kbd>
+        </label>
+        <div class="filters" id="filters" aria-label="Filter prompts by category"></div>
+      </section>
+      <section class="results-head" aria-live="polite">
+        <p id="result-count">189 prompt assets</p>
+        <p>Previews are interactive · Copy from the button</p>
+      </section>
+      <section class="prompt-grid" id="prompt-grid" aria-label="Prompt assets"></section>
+      <div class="load-sentinel" id="load-sentinel" aria-hidden="true"></div>
+      <p class="empty" id="empty" hidden>No matching prompt. Try a broader visual or technical term.</p>
+    </main>
 
-    <footer class="foot">
-      <p>
-        Every page lives in <code>demos/&lt;slug&gt;/</code> — one HTML file, one
-        module, one stylesheet. Nothing shared but design tokens.
-      </p>
-    </footer>
-
-    <script type="module" src="./src/home.js"></script>
+    <div class="copy-toast" id="copy-toast" role="status" aria-live="polite" aria-atomic="true"></div>
+    <script type="module" src="./src/prompts.js"></script>
   </body>
 </html>

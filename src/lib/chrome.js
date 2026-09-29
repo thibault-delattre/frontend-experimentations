@@ -9,6 +9,9 @@ import { FX } from './fx.js';
 export function mountDemoBar() {
   const slug = location.pathname.replace(/\/(index\.html)?$/, '').split('/').pop();
   const demo = bySlug(slug) ?? { title: slug, tags: [] };
+  if (window.self !== window.top && location.hash.startsWith('#fx-')) {
+    document.documentElement.classList.add('asset-preview');
+  }
   // Resolve from the first /demos/ boundary rather than walking up with ../.
   // This also repairs navigation when a malformed URL already contains the
   // demo path more than once.
@@ -139,6 +142,9 @@ function mountFxPrompts(slug) {
     }
 
     host.classList.add('fx-host');
+    // Makes every specimen directly addressable from the prompt vault. IDs are
+    // assigned here because many demos generate their effects at runtime.
+    if (!host.id) host.id = `fx-${host.dataset.fx}`;
     if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
 
     const btn = document.createElement('button');
@@ -171,6 +177,43 @@ function mountFxPrompts(slug) {
   // rendering nothing would hide it.
   if (missing.length) {
     console.warn(`[fx] no prompt found for: ${missing.join(', ')}`);
+  }
+
+  const hashId = location.hash && decodeURIComponent(location.hash.slice(1));
+  const fxId = hashId?.startsWith('fx-') ? hashId.slice(3) : '';
+  // Several interactive hosts already own an ID that their demo JavaScript
+  // depends on. Preserve that ID, and resolve the canonical vault hash through
+  // data-fx when no matching DOM id exists.
+  let target = hashId && (
+    document.getElementById(hashId) ||
+    (fxId ? document.querySelector(`[data-fx="${CSS.escape(fxId)}"]`) : null)
+  );
+  if (target) {
+    const embedded = document.documentElement.classList.contains('asset-preview');
+    // A few tutorial pages attach data-fx to the explanatory label because
+    // that was the best place for the old prompt badge. The vault needs the
+    // visual result instead. Empty dynamic outputs need their compact section
+    // so the control that populates them remains available.
+    if (embedded && fxId === 'streaming-list') {
+      document.getElementById('streamBtn')?.click();
+    } else if (embedded && target.matches('.demo__label') && target.nextElementSibling) {
+      target = target.nextElementSibling;
+    } else if (embedded && !target.textContent.trim() && !target.children.length) {
+      target = target.closest('section') ?? target;
+    }
+    target.classList.add('fx-target');
+    if (embedded) {
+      // Keep the original node and its listeners, but hide every branch of the
+      // demo page that does not lead to this exact effect.
+      target.classList.add('fx-preview-target');
+      let ancestor = target.parentElement;
+      while (ancestor && ancestor !== document.body) {
+        ancestor.classList.add('fx-preview-ancestor');
+        ancestor = ancestor.parentElement;
+      }
+    }
+    requestAnimationFrame(() => target.scrollIntoView({ behavior: embedded || reducedMotion() ? 'auto' : 'smooth', block: 'center' }));
+    setTimeout(() => target.classList.remove('fx-target'), 2200);
   }
 }
 

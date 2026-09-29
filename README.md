@@ -32,6 +32,11 @@ badge appears — click it to copy the brief that recreates *that exact thing*.
 
 **189 effects across all 47 demos**, each individually addressable.
 
+The root-level **Prompt Vault** (`index.html`) makes the whole dictionary
+browsable in one place: visual specimens, full-text search, category filters,
+one-click copying, interactive inline demos, and deep links back to the exact
+effect in its full demo. The broader experiment index lives at `experiments.html`.
+
 Paste it into Claude, ChatGPT, Cursor or v0 and you get a working,
 self-contained implementation back. The prompts never reference this repo, this
 file, or a neighbouring effect, so they survive being pasted into a cold chat.
